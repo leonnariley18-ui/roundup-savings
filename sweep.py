@@ -29,7 +29,7 @@ GMAIL_ADDRESS = os.environ["GMAIL_ADDRESS"]
 GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
 
 # Set these after running list_accounts.yml workflow once.
-CHECKING_ACCOUNT_ID = None         # e.g. 12345
+CHECKING_ACCOUNT_ID = 288572         # e.g. 12345
 CHECKING_ACCOUNT_SOURCE = "plaid"   # "plaid" or "asset"
 ZERO_OUT_BUFFER = 0.0               # dollars to leave behind
 
