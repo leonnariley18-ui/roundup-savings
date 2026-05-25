@@ -44,7 +44,7 @@ LOOKBACK_DAYS = 5
 
 # === ZERO-OUT CONFIG ====================================================
 # Run list_accounts.py once to find these. Then fill them in here.
-CHECKING_ACCOUNT_ID = None        # e.g. 12345
+CHECKING_ACCOUNT_ID = 288572        # e.g. 12345
 CHECKING_ACCOUNT_SOURCE = "plaid"  # "plaid" (bank-linked) or "asset" (manual)
 ZERO_OUT_BUFFER = 0.0              # dollars to leave in checking after sweep
 # =========================================================================
