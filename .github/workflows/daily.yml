@@ -1,44 +1,34 @@
-name: Round-up tracker
+name: Round-up digest
+
+# Manual trigger only. After you finish categorizing in Lunch Money,
+# come here, click Run workflow, pick your dates, get an email.
 
 on:
-  schedule:
-    # 23:00 UTC = 7pm ET (during EDT, summer). In winter (EST) this becomes 6pm ET.
-    # The script tracks every day silently and only emails on Wednesday evenings,
-    # so the email lands before your Wednesday/Thursday night budgeting session.
-    - cron: "0 23 * * *"
-  workflow_dispatch:  # lets you trigger manually from the Actions tab
-
-permissions:
-  contents: write  # needed so the workflow can commit the updated log file
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "Start date (YYYY-MM-DD). Blank = 30 days ago."
+        required: false
+        type: string
+      end_date:
+        description: "End date (YYYY-MM-DD). Blank = today."
+        required: false
+        type: string
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Install dependencies
-        run: pip install requests
-
-      - name: Run round-up script
+      - run: pip install requests
+      - name: Run round-up digest
         env:
           LUNCHMONEY_TOKEN: ${{ secrets.LUNCHMONEY_TOKEN }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          START_DATE: ${{ inputs.start_date }}
+          END_DATE: ${{ inputs.end_date }}
         run: python roundup.py
-
-      - name: Commit log file if it changed
-        run: |
-          git config user.name "roundup-bot"
-          git config user.email "roundup-bot@users.noreply.github.com"
-          git add processed_days.json
-          if ! git diff --staged --quiet; then
-            git commit -m "Update round-up log"
-            git push
-          fi
