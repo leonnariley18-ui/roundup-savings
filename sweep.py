@@ -132,9 +132,9 @@ def render_html(sweep, balance, buffer_amt, account_name, last_fetch):
 
   <tr>
     <td style="padding:24px 32px 32px 32px;">
-      <p style="margin:0 0 8px 0; color:{TEXT_SECONDARY}; font-size:14px;">Sweep to emergency fund</p>
+      <p style="margin:0 0 8px 0; color:{TEXT_SECONDARY}; font-size:14px;">Sweep up to</p>
       <p style="margin:0; color:{ACCENT}; font-size:56px; font-weight:700; letter-spacing:-1.5px; line-height:1;">${sweep:.2f}</p>
-      <p style="margin:12px 0 0 0; color:{TEXT_TERTIARY}; font-size:13px;">leaving your checking ready for tomorrow's deposit</p>
+      <p style="margin:12px 0 0 0; color:{TEXT_TERTIARY}; font-size:13px;">into your emergency fund before tomorrow's deposit</p>
     </td>
   </tr>
 
@@ -163,7 +163,7 @@ def render_html(sweep, balance, buffer_amt, account_name, last_fetch):
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:{BG_INSET}; border-radius:12px;">
         <tr>
           <td style="padding:22px 24px;">
-            <p style="margin:0; color:{TEXT_PRIMARY}; font-size:14px; line-height:1.6;">Transfer <strong style="color:{ACCENT};">${sweep:.2f}</strong> to your emergency fund before payday hits, then move this email to your <strong style="color:{TEXT_PRIMARY};">Budgeting</strong> folder.</p>
+            <p style="margin:0; color:{TEXT_PRIMARY}; font-size:14px; line-height:1.6;">Open your bank app to confirm your live balance, then transfer up to <strong style="color:{ACCENT};">${sweep:.2f}</strong> to your emergency fund. Move this email to your <strong style="color:{TEXT_PRIMARY};">Budgeting</strong> folder when done.</p>
           </td>
         </tr>
       </table>
@@ -182,7 +182,7 @@ def render_plaintext(sweep, balance, buffer_amt, account_name, last_fetch):
     lines = [
         f"Pre-payday zero-out sweep \u2014 {today}",
         "",
-        f"Sweep to emergency fund: ${sweep:.2f}",
+        f"Sweep up to: ${sweep:.2f}",
         "",
         f"  {account_name} balance: ${balance:.2f}",
     ]
@@ -192,8 +192,9 @@ def render_plaintext(sweep, balance, buffer_amt, account_name, last_fetch):
         lines.append(f"  Last synced: {last_fetch}")
     lines += [
         "",
-        f"Transfer ${sweep:.2f} to your emergency fund before payday hits, "
-        "then move this email to your Budgeting folder.",
+        f"Open your bank app to confirm your live balance, then transfer "
+        f"up to ${sweep:.2f} to your emergency fund. Move this email to "
+        "your Budgeting folder when done.",
     ]
     return "\n".join(lines)
 
@@ -232,7 +233,7 @@ def main():
         raise SystemExit(f"Account with ID {CHECKING_ACCOUNT_ID} not found.")
 
     sweep = max(0.0, balance - ZERO_OUT_BUFFER)
-    subject = f"Sweep ${sweep:.2f} to emergency fund before payday"
+    subject = f"Sweep up to ${sweep:.2f} to emergency fund before payday"
     html_body = render_html(sweep, balance, ZERO_OUT_BUFFER, name, last_fetch)
     text_body = render_plaintext(sweep, balance, ZERO_OUT_BUFFER, name, last_fetch)
 
