@@ -37,7 +37,7 @@ RESTAURANT_KEYWORDS = ["restaurant", "dining", "food", "coffee", "eat"]
 
 # Days of week: Monday=0, Tuesday=1, Wednesday=2, Thursday=3, Friday=4,
 # Saturday=5, Sunday=6.
-DIGEST_WEEKDAY = 6  # Sunday
+DIGEST_WEEKDAY = 5  # Saturday
 
 # How far back the daily tracker looks each run.
 LOOKBACK_DAYS = 5
