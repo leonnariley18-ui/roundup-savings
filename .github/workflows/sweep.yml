@@ -1,3 +1,4 @@
+name: Pre-payday sweep
 # Runs every Wednesday at 7pm ET (EDT) — 23:00 UTC.
 # During EST (Nov-Mar) it shifts to 6pm ET because GitHub cron doesn't
 # adjust for daylight saving time. Still works fine for the use case.
