@@ -6,7 +6,7 @@ name: Pre-payday sweep
 
 on:
   schedule:
-      cron: - cron: "0 23 * * 3"   # 23:00 UTC every Wednesday
+    - cron: "0 23 * * 3"
   workflow_dispatch:
 
 jobs:
