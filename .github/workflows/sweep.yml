@@ -1,9 +1,11 @@
-name: Pre-payday sweep
-
-# Manual trigger only. Run this the night before payday to get the
-# current checking balance and the "sweep to emergency fund" amount.
+# Runs every Wednesday at 7pm ET (EDT) — 23:00 UTC.
+# During EST (Nov-Mar) it shifts to 6pm ET because GitHub cron doesn't
+# adjust for daylight saving time. Still works fine for the use case.
+# Can also be triggered manually anytime via "Run workflow".
 
 on:
+  schedule:
+    - cron: "0 23 * * 3"   # 23:00 UTC every Wednesday
   workflow_dispatch:
 
 jobs:
