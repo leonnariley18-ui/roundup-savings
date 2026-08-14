@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Ledger</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>%F0%9F%93%97</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500&family=Montserrat:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<!-- Nothing renders until there is a session to scope it to. -->
+<div class="gate" id="gate" hidden></div>
+
+<div class="wrap" id="appWrap" hidden>
+
+  <div class="mast">
+    <div class="big" id="mastWord">&nbsp;</div>
+    <div class="where" id="mastWhere"></div>
+    <button class="brand" id="brandBtn" aria-haspopup="true" aria-expanded="false">
+      <span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="mark" aria-hidden="true">📗</span>Ledger</button>
+    <div class="meta" id="mastMeta"></div>
+  </div>
+
+  <div class="conn" id="conn" hidden></div>
+
+  <!-- Six sections. The loan is not among them: it is a modal, opened from the
+       drawer and from the loan row in the week view. -->
+  <section class="tab" id="t-cal"></section>
+  <section class="tab" id="t-ru" hidden></section>
+  <section class="tab" id="t-cards" hidden></section>
+  <section class="tab" id="t-pb" hidden></section>
+  <section class="tab" id="t-stmt" hidden></section>
+
+</div>
+
+<div class="drawer" id="drawer" hidden>
+  <div class="sc" id="drawerScrim"></div>
+  <div class="pan" role="dialog" aria-modal="true" aria-label="Sections">
+    <div class="ph">
+      <span class="t"><span class="mark" aria-hidden="true">📗</span>Ledger</span>
+      <button id="drawerX" aria-label="Close">&times;</button>
+    </div>
+    <div class="dnav" id="nav" role="tablist"></div>
+    <div class="dfoot">
+      Six sections &middot; desktop
+      <button class="tbtn" id="signOut" style="margin-top:12px" hidden>Sign out</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle" id="modal"></div>
+</div>
+<div class="scrim" id="helpScrim" hidden>
+  <div class="modal hmodal" role="dialog" aria-modal="true" aria-label="How this works" id="helpModal"></div>
+</div>
+<div class="scrim" id="loanScrim" hidden>
+  <div class="modal lmodal" role="dialog" aria-modal="true" aria-label="The loan" id="loanModal"></div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="assets/js/app.js"></script>
+</body>
+</html>

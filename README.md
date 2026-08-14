@@ -1,5 +1,16 @@
 # Lunch Money Savings Toolkit
 
+This repository holds two things that share a Lunch Money account:
+
+- **Ledger** — the dashboard. A static site at the repository root, backed by
+  Supabase. Setup and current status: **[SETUP.md](SETUP.md)**.
+- **The Python email tools** — documented below, and unaffected by the
+  dashboard. The Wednesday pre-payday sweep keeps running as it always has.
+
+---
+
+## The Python tools
+
 A small set of Python tools that talk to your Lunch Money account and email
 you beautifully formatted, actionable savings prompts. Built for someone who
 budgets in batches, gets paid on Thursdays, and wants to build a quiet
