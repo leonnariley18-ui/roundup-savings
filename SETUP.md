@@ -54,6 +54,34 @@ But if sign-ups are left open, a stranger can create *their own* account with
 that key. RLS would still keep them out of every row of yours, so this is not a
 data leak; it is an unnecessary door, and closing it takes one click.
 
+### Stay signed in
+
+**Authentication → Sessions.** Leave **"Time-box user sessions"** and **"Inactivity
+timeout"** both unset. They are empty by default; this is a check, not a change.
+
+With those off, signing in once per browser is the whole of it. The session is
+stored locally and renews itself in the background, so a device you have signed
+in on stays signed in indefinitely — you should not see the gate again on it.
+
+### If you ever get locked out
+
+You cannot be permanently locked out of this, because you own the database. No
+email has to arrive for any of it to work.
+
+**To reset your own password:** Supabase dashboard → **Authentication → Users**
+→ click your user → **Reset password**, and set a new one directly. It takes
+about thirty seconds and involves no email at all.
+
+This is worth knowing up front, because the usual way people get stranded in a
+Supabase project is a confirmation email that never arrives: a new project has
+no SMTP configured, and the built-in sender is rate-limited and unreliable. An
+account then exists but reads as unconfirmed, correct passwords are rejected,
+and the magic link meant to rescue you depends on the same dead email path.
+
+This app avoids that by construction — it uses email and password rather than
+magic links, and step 3 creates the account already confirmed, so nothing here
+ever waits on an inbox. The dashboard reset above is the backstop regardless.
+
 ## 4. Seed the cards and the loan
 
 Copy your new user's **UID** from the Users list, then run this in the SQL
@@ -117,7 +145,8 @@ If something is off, the message tells you which of three things happened:
 | --- | --- |
 | "Not connected to a database yet" | `config.js` is still empty — step 5 |
 | "Could not load the Supabase client from the CDN" | Network, not configuration. Reload. |
-| "Invalid login credentials" | Wrong password, or "Auto Confirm User" was not ticked in step 3 |
+| "Invalid login credentials" | Wrong password, or "Auto Confirm User" was not ticked in step 3. Either way the fix is the dashboard password reset above — never a magic link. |
+| The gate appears again on a device you already signed in on | A session timeout is set. Check **Authentication → Sessions**. |
 
 ---
 
