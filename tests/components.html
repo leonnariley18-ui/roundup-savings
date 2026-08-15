@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Ledger — shared components</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500&family=Montserrat:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+<div class="wrap" style="padding-top:34px">
+
+  <h2 class="sec" style="margin-top:0">Shared components</h2>
+  <div class="plain" style="margin-bottom:26px">
+    Not part of the app — a bench for the two custom controls, which are pure
+    interaction and cannot be covered by the unit tests. Both are custom because
+    the native controls take the OS's appearance rather than the app's, and there
+    is no native <b>&lt;select&gt;</b> or <b>&lt;input type="date"&gt;</b> anywhere
+    in Ledger.
+  </div>
+
+  <h2 class="sec">Date picker</h2>
+  <div class="ff" style="align-items:flex-start">
+    <div class="fld grow">
+      <span class="label">Plain — any date</span>
+      <div id="m1"></div>
+      <div class="cs mono" id="o1" style="margin-top:9px;color:var(--faint)"></div>
+    </div>
+    <div class="fld grow">
+      <span class="label">With a minimum of today</span>
+      <div id="m2"></div>
+      <div class="cs mono" id="o2" style="margin-top:9px;color:var(--faint)"></div>
+    </div>
+  </div>
+
+  <div class="plain" style="margin-top:20px">
+    Check: Monday-start grid, serif month name, mono numerals, prev/next, a Today
+    shortcut, accent-filled selection, and today marked distinctly from the
+    selection. On the second field every day before today is <b>disabled rather
+    than refused after the click</b>, and the Today shortcut is absent entirely
+    when today falls out of range. Escape closes the popup and returns focus to
+    the field without closing anything around it.
+  </div>
+
+  <h2 class="sec">Select</h2>
+  <div class="ff" style="align-items:flex-start">
+    <div class="fld grow">
+      <span class="label">Where did it go?</span>
+      <div id="m3"></div>
+      <div class="cs mono" id="o3" style="margin-top:9px;color:var(--faint)"></div>
+    </div>
+    <div class="fld grow">
+      <span class="label">BofA's 3% category</span>
+      <div id="m4"></div>
+      <div class="cs mono" id="o4" style="margin-top:9px;color:var(--faint)"></div>
+    </div>
+  </div>
+
+  <div class="plain" style="margin-top:20px">
+    Check: same underlined mono button and caret as the picker, and an accent
+    left-bar on the current option. Opening one control closes the other.
+  </div>
+
+  <h2 class="sec">Surviving a repaint</h2>
+  <div class="plain" style="margin-bottom:14px">
+    The app repaints by assigning innerHTML. Handlers are registered by element
+    id, so a field keeps working after the markup under it is thrown away and
+    rebuilt. This button does exactly that to the first picker — it should still
+    report changes afterwards.
+  </div>
+  <button class="go" id="repaint">Repaint the first picker</button>
+
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+import { dateField, onDateChange, dateValue } from '../assets/js/ui/datepicker.js';
+import { selectField, onSelectChange } from '../assets/js/ui/select.js';
+import { toast } from '../assets/js/ui/toast.js';
+import { today, key, add, fmtDW, pd } from '../assets/js/dates.js';
+
+const show = (id, msg) => { document.getElementById(id).textContent = msg; };
+
+function mountFirst() {
+  document.getElementById('m1').innerHTML =
+    dateField('d1', { value: key(today()), label: 'Any date' });
+  show('o1', 'value: ' + dateValue('d1'));
+}
+mountFirst();
+onDateChange('d1', k => { show('o1', 'value: ' + k + '  ·  ' + fmtDW(pd(k))); toast('Picked ' + k); });
+
+document.getElementById('m2').innerHTML =
+  dateField('d2', { value: key(add(today(), 7)), min: key(today()), label: 'Future only' });
+show('o2', 'value: ' + dateValue('d2') + '  ·  min: ' + key(today()));
+onDateChange('d2', k => { show('o2', 'value: ' + k + '  ·  min: ' + key(today())); toast('Picked ' + k); });
+
+document.getElementById('m3').innerHTML = selectField('s1', [
+  ['0557', 'Wells Fargo Autograph ···0557'],
+  ['1856', 'Chase Prime Visa ···1856'],
+  ['0516', 'BofA Customized Cash ···0516'],
+  ['other', 'Something else, not a card'],
+], '0557', 'Where the purchase went');
+show('o3', 'value: 0557');
+onSelectChange('s1', (v, label) => { show('o3', 'value: ' + v + '  ·  ' + label); toast(label); });
+
+document.getElementById('m4').innerHTML = selectField('s2', [
+  ['online', 'Online shopping'], ['dining', 'Dining'], ['gas', 'Gas & EV charging'],
+  ['travel', 'Travel'], ['drug', 'Drug stores'], ['home', 'Home improvement'],
+], 'online', "BofA's 3% category");
+show('o4', 'value: online');
+onSelectChange('s2', (v, label) => { show('o4', 'value: ' + v + '  ·  ' + label); toast(label); });
+
+/* Rebuilds the markup underneath the handler, which must survive it. */
+document.getElementById('repaint').onclick = () => {
+  mountFirst();
+  toast('Repainted — the picker should still report changes');
+};
+</script>
+</body>
+</html>
