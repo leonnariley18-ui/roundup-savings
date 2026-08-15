@@ -14,7 +14,11 @@
 -- a policy that joins is slower and harder to read, and the value can never
 -- disagree because nothing writes these tables but the owner.
 
-create extension if not exists "pgcrypto";
+-- No `create extension pgcrypto` here. gen_random_uuid() has been part of
+-- Postgres core since version 13 — it lives in pg_catalog, not in pgcrypto —
+-- and Supabase runs 15+. The extension was never needed, and asking for it
+-- fails outright on Supabase, where the SQL editor's role is not permitted to
+-- create extensions: `ERROR: 42501: permission denied for database postgres`.
 
 create schema if not exists ledger;
 
