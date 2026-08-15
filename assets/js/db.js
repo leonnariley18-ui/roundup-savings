@@ -42,7 +42,11 @@ export async function initDb() {
   try {
     const { createClient } = await import(/* @vite-ignore */ CDN);
     client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true }
+      auth: { persistSession: true, autoRefreshToken: true },
+      /* Every table lives in `ledger`, not `public`, so this app can share a
+         project with another one without colliding with it. Supabase must also
+         be told to expose the schema — Settings → API → Exposed schemas. */
+      db: { schema: 'ledger' }
     });
     status = { ok: true, reason: null };
     return client;

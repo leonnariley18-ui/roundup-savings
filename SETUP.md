@@ -1,8 +1,9 @@
 # Ledger — setup
 
 One pass, about fifteen minutes. At the end you have a live site at
-`https://leonnariley18-ui.github.io/roundup-savings/` signed in against your own
-Supabase project, with the six cards and the loan seeded.
+`https://leonnariley18-ui.github.io/roundup-savings/` signed in against a
+Supabase project — new or one you already have — with the six cards and the
+loan seeded.
 
 Steps 1–4 are the database, step 5 connects the site to it, step 6 publishes.
 The site is deliberately usable before any of this — it renders the shell and
@@ -11,16 +12,64 @@ something live immediately.
 
 ---
 
-## 1. Create the Supabase project
+## 1. Pick a project
 
-1. Go to [supabase.com/dashboard](https://supabase.com/dashboard) and create a
-   new project.
-2. Name it anything. Pick the region closest to you — it is the round-trip time
-   on every query.
-3. Save the database password somewhere. You will not need it for this app, but
-   it is not shown again.
+**You do not need a new Supabase project.** Ledger installs into its own
+`ledger` schema, so it can live inside a project that already runs another
+app without touching it. Given the free plan allows two active projects, and
+paused projects break the apps that depend on them, sharing an existing one is
+usually the right answer.
 
-Wait for provisioning to finish before the next step.
+Sharing has a second advantage: a project kept awake by a live app never
+auto-pauses, so the dashboard is never waiting on an unpause either.
+
+If you do have a spare slot and would rather keep things separate, create a new
+project instead — nothing below changes.
+
+**What sharing does and does not mean:**
+
+- **Your app's tables are untouched.** Everything here is created in `ledger`,
+  never in `public`. Nothing in these migrations reads, alters, grants or
+  revokes anything outside that schema.
+- **Name collisions cannot happen.** A `ledger.cards` and a `public.cards` are
+  different tables and coexist happily.
+- **The user pool is shared.** Both apps authenticate against the same
+  `auth.users`. That is safe — every Ledger row is scoped to your `auth.uid()`,
+  so another user of your other app sees zero rows here — but it does mean you
+  either reuse your existing account or add a second one.
+- **Removing it later is one line:** `drop schema ledger cascade;`
+
+### Living alongside your other app
+
+Isolation runs both ways, but not perfectly, and the exceptions are worth
+knowing before you go tinkering.
+
+**The rule of thumb:** if its name does not start with `ledger.`, it is not
+Ledger's. Everything this app owns is in that one schema.
+
+**Cannot affect Ledger at all** — creating, altering, renaming or dropping
+tables in `public`; editing any row in your app's tables; changing RLS policies
+on them; adding columns or indexes; restoring a backup of an individual `public`
+table. Different schema, no overlap.
+
+**Can affect Ledger.** The short list, worst first:
+
+| Action | Effect |
+| --- | --- |
+| **Deleting your user** in Authentication → Users | **Deletes every Ledger row you own.** Foreign keys cascade from `auth.users` by design, so the data goes with the account. |
+| Restoring a **whole-project** backup from before Ledger was installed | The `ledger` schema disappears with everything in it |
+| Removing `ledger` from **Exposed schemas** | Dashboard breaks. Data is fine; re-add it and it works |
+| Rotating the **anon key** or JWT secret | Sign-ins fail until `config.js` is updated |
+| Disabling the **email** auth provider | You cannot sign in |
+| `drop schema ledger cascade` | Removes Ledger entirely — that is what it is for |
+
+Only the first two lose data, and both are deliberate acts rather than
+something you drift into. Everything else is a broken connection you can undo.
+
+**Worth doing given you keep backup tables around:** Ledger's data is small, so
+export it occasionally. In the SQL editor, run a `select *` against any
+`ledger.` table and use the download button, or ask a database client for
+`pg_dump --schema=ledger`. A single dated export is enough to rebuild from.
 
 ## 2. Run the migrations
 
@@ -29,30 +78,53 @@ pasting the contents of each into a new query and hitting Run:
 
 | Order | File | What it does |
 | --- | --- | --- |
-| 1 | `supabase/migrations/0001_schema.sql` | Every table |
+| 1 | `supabase/migrations/0001_schema.sql` | Creates the `ledger` schema and every table |
 | 2 | `supabase/migrations/0002_rls.sql` | Row level security |
 | 3 | `supabase/migrations/0003_seed.sql` | Defines the seed function — does not run it yet |
 
 Each should report success. Order matters: RLS refers to the tables, and the
 seed refers to both.
 
-## 3. Create your account, and close the door behind you
+### Expose the schema
 
-This app has one user and no sign-up form, so the account is made by hand.
+**Settings → API → Exposed schemas.** Add **`ledger`** to the list and save.
+
+PostgREST only serves schemas named here, so without this the site connects and
+authenticates fine but every query returns a "schema must be one of the
+following" error. It is the one step with no visible symptom until you try to
+load data.
+
+## 3. Get an account
+
+Ledger has no sign-up form, so the account is either one you already have or
+one you make by hand.
+
+**If you are sharing a project and already have an account in it**, just use
+that — nothing to do here. Your Ledger rows are scoped to that user id.
+
+**To add a separate account:**
 
 1. **Authentication → Users → Add user → Create new user.**
-2. Enter your email and a password. **Tick "Auto Confirm User"** — without it
+2. Enter an email and password. **Tick "Auto Confirm User"** — without it
    Supabase waits on a confirmation email that is not configured yet, and the
    sign-in will fail with credentials that are actually correct.
-3. Now turn off public sign-ups, so the door you just walked through closes:
-   **Authentication → Sign In / Providers → Email**, and disable
-   **"Allow new users to sign up"**.
 
-Step 3 matters. The anon key is visible in the page source of a public site —
-that is expected and safe, because RLS grants nothing without a signed-in user.
-But if sign-ups are left open, a stranger can create *their own* account with
-that key. RLS would still keep them out of every row of yours, so this is not a
-data leak; it is an unnecessary door, and closing it takes one click.
+### About public sign-ups
+
+> **On a shared project, do not disable sign-ups.** If the other app in this
+> project registers its own users, turning sign-ups off breaks it. This is the
+> one setting where installing Ledger could damage a neighbouring app, and it
+> is why it is called out rather than left as a default instruction.
+
+On a **dedicated** project with nothing else in it, turning them off is worth
+doing: **Authentication → Sign In / Providers → Email** → disable **"Allow new
+users to sign up"**.
+
+Either way your data is safe. The anon key is visible in the page source of a
+public site — expected, and fine, because it grants nothing without a signed-in
+user. If sign-ups stay open, a stranger can create their own account, but RLS
+scopes every Ledger row to its owner, so they see nothing of yours. Closing
+sign-ups removes a pointless door; it is not what is protecting you.
 
 ### Stay signed in
 
@@ -88,7 +160,7 @@ Copy your new user's **UID** from the Users list, then run this in the SQL
 editor with the UID pasted in:
 
 ```sql
-select public.seed_ledger('paste-your-user-uid-here');
+select ledger.seed_ledger('paste-your-user-uid-here');
 ```
 
 It reports what it wrote. It refuses to run twice, so a second run is harmless.
@@ -144,6 +216,7 @@ If something is off, the message tells you which of three things happened:
 | What you see | What it means |
 | --- | --- |
 | "Not connected to a database yet" | `config.js` is still empty — step 5 |
+| A schema error mentioning `ledger` | `ledger` was not added to Exposed schemas — step 2 |
 | "Could not load the Supabase client from the CDN" | Network, not configuration. Reload. |
 | "Invalid login credentials" | Wrong password, or "Auto Confirm User" was not ticked in step 3. Either way the fix is the dashboard password reset above — never a magic link. |
 | The gate appears again on a device you already signed in on | A session timeout is set. Check **Authentication → Sessions**. |
