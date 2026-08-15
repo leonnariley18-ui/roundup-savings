@@ -39,6 +39,38 @@ project instead — nothing below changes.
   either reuse your existing account or add a second one.
 - **Removing it later is one line:** `drop schema ledger cascade;`
 
+### Living alongside your other app
+
+Isolation runs both ways, but not perfectly, and the exceptions are worth
+knowing before you go tinkering.
+
+**The rule of thumb:** if its name does not start with `ledger.`, it is not
+Ledger's. Everything this app owns is in that one schema.
+
+**Cannot affect Ledger at all** — creating, altering, renaming or dropping
+tables in `public`; editing any row in your app's tables; changing RLS policies
+on them; adding columns or indexes; restoring a backup of an individual `public`
+table. Different schema, no overlap.
+
+**Can affect Ledger.** The short list, worst first:
+
+| Action | Effect |
+| --- | --- |
+| **Deleting your user** in Authentication → Users | **Deletes every Ledger row you own.** Foreign keys cascade from `auth.users` by design, so the data goes with the account. |
+| Restoring a **whole-project** backup from before Ledger was installed | The `ledger` schema disappears with everything in it |
+| Removing `ledger` from **Exposed schemas** | Dashboard breaks. Data is fine; re-add it and it works |
+| Rotating the **anon key** or JWT secret | Sign-ins fail until `config.js` is updated |
+| Disabling the **email** auth provider | You cannot sign in |
+| `drop schema ledger cascade` | Removes Ledger entirely — that is what it is for |
+
+Only the first two lose data, and both are deliberate acts rather than
+something you drift into. Everything else is a broken connection you can undo.
+
+**Worth doing given you keep backup tables around:** Ledger's data is small, so
+export it occasionally. In the SQL editor, run a `select *` against any
+`ledger.` table and use the download button, or ask a database client for
+`pg_dump --schema=ledger`. A single dated export is enough to rebuild from.
+
 ## 2. Run the migrations
 
 Open **SQL Editor** in the left sidebar. Run these three files **in order**,
