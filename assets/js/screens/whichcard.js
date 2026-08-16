@@ -11,9 +11,9 @@
 import { today, add, key, pd, fmtD, fmtDW, money, DW, dayIndex, daysBetween } from '../dates.js';
 import { rankCards } from '../ranking.js';
 import { loadCards, loadDecisions, logDecision, removeDecision, setCapBlown,
-         setChoiceCategory, callFunction, setCardBalance } from '../data.js';
+         setChoiceCategory, callFunction, setCardBalance, setCardLink } from '../data.js';
 import { dateField, onDateChange, setDate } from '../ui/datepicker.js';
-import { selectField, onSelectChange } from '../ui/select.js';
+import { selectField, onSelectChange, selectValue } from '../ui/select.js';
 import { toast } from '../ui/toast.js';
 import { openHelp } from '../help.js';
 
@@ -30,7 +30,8 @@ const BOFA_CHOICES = [
   ['travel', 'Travel'], ['drug', 'Drug stores'], ['home', 'Home improvement'],
 ];
 
-let state = { refDate: today(), category: 'dining', amount: 0, data: null, decisions: [] };
+let state = { refDate: today(), category: 'dining', amount: 0, data: null, decisions: [],
+              linking: null };   // null = panel closed; otherwise the fetched accounts
 let host = null;
 
 export async function mount(el) {
@@ -55,6 +56,9 @@ export async function refresh() {
 }
 
 const qEnd = d => new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3 + 3, 0);
+
+/* Account names come from Lunch Money, so they are somebody else's text. */
+const esc = s => String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
 function render() {
   if (!state.data) return;
@@ -103,8 +107,10 @@ function render() {
 
     <div class="syncrow">
       <span>${syncedLine(cards)}</span>
-      <button class="tbtn" id="syncBal">Sync balances</button>
+      <button class="tbtn" id="linkCards">Connect to Lunch Money</button>
+      <button class="tbtn" id="syncBal"${cards.some(isLinked) ? '' : ' disabled'}>Sync balances</button>
     </div>
+    ${state.linking ? linkPanelHTML(cards) : ''}
 
     <div class="panel" style="margin-top:13px" id="bofaPanel">${bofaHTML()}</div>
 
@@ -226,6 +232,73 @@ function rowHTML(r, best) {
   </tr>`;
 }
 
+/* ---------------------------------------------------------------- linking */
+
+/* Asks once, per card, rather than guessing forever.
+ *
+ * Last-four matching still runs, but only to preselect a suggestion — a person
+ * confirms it. A wrong guess about which account a balance belongs to is
+ * invisible once made, and this is the figure that decides whether a card gets
+ * recommended at all. */
+function linkPanelHTML(cards) {
+  const accounts = state.linking.accounts || [];
+
+  if (state.linking.error) {
+    return `<div class="panel" style="margin-top:13px">
+      <div class="label" style="margin-bottom:9px">Couldn't reach Lunch Money</div>
+      <div class="plain">${esc(state.linking.error)}</div>
+      <div class="plain" style="margin-top:10px;color:var(--faint)">This needs the Edge Functions
+        deployed and the token in Supabase secrets — see SETUP.md step 7. Until then, type the
+        balances in yourself.</div>
+    </div>`;
+  }
+
+  if (state.linking.loading) {
+    return `<div class="panel" style="margin-top:13px"><div class="plain">Asking Lunch Money…</div></div>`;
+  }
+
+  const options = [
+    ['none', "Not in Lunch Money — I'll keep this one myself"],
+    ...accounts.map(a => [a.id,
+      `${a.name}${a.mask ? ' ···' + a.mask : ''} · ${money(a.balance)}`]),
+  ];
+
+  return `<div class="panel" style="margin-top:13px">
+    <div class="label" style="margin-bottom:11px">Connect to Lunch Money</div>
+    <div class="plain">
+      <b>${accounts.length} account${accounts.length === 1 ? '' : 's'} found.</b>
+      Pick which one holds each card. A connected card has its balance synced and can't be typed
+      over; one you mark as not in Lunch Money stays yours to keep up to date.
+    </div>
+    <div class="linkrows">
+      ${cards.map(card => {
+        const suggested = suggestFor(card, accounts);
+        const current = card.lunchmoney_account_id || suggested || 'none';
+        return `<div class="linkrow">
+          <div class="lk">
+            <div class="cn">${esc(card.name)}</div>
+            <div class="cs">···${card.last4}${
+              !card.lunchmoney_account_id && suggested ? ' · suggested by its last four' : ''}</div>
+          </div>
+          ${selectField('link-' + card.id, options, current, 'Lunch Money account for ' + card.name)}
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="ff" style="margin-top:16px">
+      <button class="go" id="linkSave">Save connections</button>
+      <button class="tbtn" id="linkCancel">Close</button>
+    </div>
+  </div>`;
+}
+
+/* A suggestion only. Never applied without confirmation. */
+function suggestFor(card, accounts) {
+  const digits = s => String(s || '').replace(/\D/g, '');
+  const hit = accounts.find(a => digits(a.mask).endsWith(card.last4)) ||
+              accounts.find(a => digits(a.name).endsWith(card.last4));
+  return hit ? hit.id : null;
+}
+
 /* ---------------------------------------------------------------- BofA */
 
 /* A balance is an estimate with an age. Lunch Money background-syncs a single
@@ -233,18 +306,18 @@ function rowHTML(r, best) {
  * a day or two of lag is irrelevant to a rule whose threshold is "any balance
  * at all", but pretending it is live would not be. */
 function syncedLine(cards) {
+  const undecided = cards.filter(isUndecided).length;
+  if (undecided === cards.length) return 'No card is connected to Lunch Money yet';
+
   const linked = cards.filter(isLinked).length;
-  const seeded = cards.filter(c => (c.balance_source || 'seed') === 'seed').length;
+  const mine = cards.length - linked - undecided;
   const stale = cards.filter(c =>
     (c.balance_source === 'manual' && (daysOld(c) ?? 0) > 7) || isStuck(c)).length;
 
-  if (!linked && seeded === cards.length) {
-    return 'No card is linked to Lunch Money — set these yourself';
-  }
   const parts = [];
   if (linked) parts.push(`${linked} synced`);
-  if (cards.length - linked) parts.push(`${cards.length - linked} you keep yourself`);
-  if (seeded) parts.push(`${seeded} never checked`);
+  if (mine) parts.push(`${mine} you keep yourself`);
+  if (undecided) parts.push(`${undecided} not connected`);
   if (stale) parts.push(`${stale} going stale`);
   return 'Balances: ' + parts.join(' · ');
 }
@@ -255,7 +328,8 @@ function syncedLine(cards) {
  *
  * Linked balances are read-only. Typing over one would be overwritten by the
  * next sync, so offering the field at all would be a lie about what sticks. */
-const isLinked = card => (card.balance_source || 'seed') === 'lunchmoney';
+const isLinked = card => !!card.lunchmoney_account_id && card.lunchmoney_account_id !== 'none';
+const isUndecided = card => !card.lunchmoney_account_id;
 
 /* Except when a linked card has gone quiet. If Lunch Money stops matching it —
  * the account was unlinked, or the last four digits changed — the figure would
@@ -286,17 +360,24 @@ function daysOld(card) {
  * The seeded figures say so outright rather than looking like fact. */
 function ageLine(card) {
   const source = card.balance_source || 'seed';
-  if (source === 'seed') return 'not linked — set this yourself';
-  const days = daysOld(card);
-  const how = source === 'lunchmoney' ? 'synced' : 'you set this';
-  const when = days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+  if (isUndecided(card)) return 'not connected yet';
+  /* Linked but never fetched. Not "yours to keep" — nothing here is yours to
+     keep once a card is linked — and not a synced figure either. */
+  if (isLinked(card) && source !== 'lunchmoney') return 'linked — sync to fetch it';
+  if (!isLinked(card)) return source === 'seed' ? 'yours to keep — from setup' : ageOfManual(card);
+  const when = whenPhrase(daysOld(card));
   if (isStuck(card)) return `last synced ${when} — no longer matching, set it yourself`;
-  return `${how} ${when}`;
+  return `synced ${when}`;
 }
+
+const whenPhrase = days =>
+  days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+
+const ageOfManual = card => `you set this ${whenPhrase(daysOld(card))}`;
 
 function ageClass(card) {
   const source = card.balance_source || 'seed';
-  if (source === 'seed') return 'balage warn';
+  if (isUndecided(card) || source === 'seed') return 'balage warn';
   if (isStuck(card)) return 'balage warn';
   /* A synced figure is not stale at a week — it refreshes itself. A typed one
      is only as good as the day it was typed. */
@@ -474,6 +555,43 @@ function wire() {
                       : 'Saved — back in the running');
     } catch (err) { toast("Couldn't save that: " + err.message); }
   });
+
+  const link = host.querySelector('#linkCards');
+  if (link) link.onclick = async () => {
+    if (state.linking) { state.linking = null; render(); return; }
+    state.linking = { loading: true, accounts: [], error: null };
+    render();
+    try {
+      const out = await callFunction('list-accounts');
+      state.linking = { loading: false, accounts: out.accounts || [], error: null };
+    } catch (err) {
+      state.linking = { loading: false, accounts: [], error: err.message };
+    }
+    render();
+  };
+
+  const linkCancel = host.querySelector('#linkCancel');
+  if (linkCancel) linkCancel.onclick = () => { state.linking = null; render(); };
+
+  const linkSave = host.querySelector('#linkSave');
+  if (linkSave) linkSave.onclick = async () => {
+    linkSave.disabled = true;
+    try {
+      for (const card of state.data.cards) {
+        const chosen = selectValue('link-' + card.id);
+        if (chosen && chosen !== card.lunchmoney_account_id) {
+          await setCardLink(card.id, chosen);
+        }
+      }
+      state.data = await loadCards();
+      state.linking = null;
+      render();
+      toast('Connections saved');
+    } catch (err) {
+      linkSave.disabled = false;
+      toast("Couldn't save: " + err.message);
+    }
+  };
 
   const sync = host.querySelector('#syncBal');
   if (sync) sync.onclick = async () => {

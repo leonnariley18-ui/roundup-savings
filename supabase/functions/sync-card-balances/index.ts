@@ -13,8 +13,6 @@
 
 import { lm, json, corsHeaders, requireLedgerUser } from '../_shared/lunchmoney.ts';
 
-const digits = (s: unknown) => String(s ?? '').replace(/\D/g, '');
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -28,18 +26,13 @@ Deno.serve(async (req) => {
       lm('/plaid_accounts').catch(() => ({ plaid_accounts: [] })),
     ]);
 
-    const accounts = [
-      ...(assets.assets || []).map((a: any) => ({
-        name: a.display_name || a.name, mask: a.display_name || a.name,
-        balance: Number(a.balance ?? 0), type: a.type_name,
-      })),
-      ...(plaid.plaid_accounts || []).map((a: any) => ({
-        name: a.display_name || a.name, mask: a.mask,
-        balance: Number(a.balance ?? 0), type: a.type,
-      })),
-    ];
+    /* Keyed by the same composite id the linking screen stored. */
+    const byId = new Map<string, number>();
+    for (const a of assets.assets || []) byId.set(`asset:${a.id}`, Number(a.balance ?? 0));
+    for (const a of plaid.plaid_accounts || []) byId.set(`plaid:${a.id}`, Number(a.balance ?? 0));
 
-    const { data: cards, error } = await supabase.from('cards').select('id,name,last4');
+    const { data: cards, error } = await supabase
+      .from('cards').select('id,name,last4,lunchmoney_account_id');
     if (error) throw error;
 
     const now = new Date().toISOString();
@@ -47,14 +40,22 @@ Deno.serve(async (req) => {
     const unmatched: string[] = [];
 
     for (const card of cards || []) {
-      /* Matched on the last four digits, which is the only identifier both
-         sides reliably share — display names get renamed. */
-      const hit = accounts.find(a => digits(a.mask).endsWith(card.last4)) ||
-                  accounts.find(a => digits(a.name).endsWith(card.last4));
-      if (!hit) { unmatched.push(card.name); continue; }
+      const link = card.lunchmoney_account_id;
+
+      /* Only cards someone has explicitly linked. An undecided card is not a
+         failure to report — it just has not been through the linking screen —
+         and 'none' means the user said it is not in Lunch Money at all. */
+      if (!link || link === 'none') continue;
+
+      if (!byId.has(link)) {
+        /* The link points at an account that no longer exists. Named rather
+           than silently skipped, because the balance is now frozen. */
+        unmatched.push(card.name);
+        continue;
+      }
 
       /* Lunch Money reports card balances as a positive amount owed. */
-      const balance = Math.abs(hit.balance);
+      const balance = Math.abs(byId.get(link)!);
       const { error: upErr } = await supabase.from('cards')
         .update({ current_balance: balance, balance_synced_at: now, balance_source: 'lunchmoney' })
         .eq('id', card.id);

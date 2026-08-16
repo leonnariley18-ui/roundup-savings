@@ -291,3 +291,10 @@ export async function setBillPaid(instanceId, paidAt) {
 export async function setBillAmount(instanceId, amount) {
   await run(getDb().from('bill_instances').update({ amount }).eq('id', instanceId));
 }
+
+/* Stated once, then stored. 'none' is a real answer — it means the card is
+ * deliberately not in Lunch Money and its balance is the user's to keep. */
+export async function setCardLink(cardId, accountId) {
+  await run(getDb().from('cards')
+    .update({ lunchmoney_account_id: accountId }).eq('id', cardId));
+}

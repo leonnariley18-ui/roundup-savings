@@ -642,3 +642,10 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .cs.balage.warn{color:var(--warn)}
 /* a synced balance is not yours to type over */
 .ballocked{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+
+/* connecting cards to Lunch Money accounts */
+.linkrows{margin-top:16px;border-top:1px solid var(--soft)}
+.linkrow{display:flex;align-items:center;gap:18px;padding:12px 0;border-bottom:1px solid var(--soft);flex-wrap:wrap}
+.linkrow:last-child{border-bottom:0}
+.linkrow .lk{flex:0 0 210px;min-width:180px}
+.linkrow .selwrap{flex:1;min-width:260px}

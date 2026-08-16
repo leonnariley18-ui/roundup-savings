@@ -285,6 +285,7 @@ No CLI needed.
 
 | Function | Paste from |
 | --- | --- |
+| `list-accounts` | `supabase/functions/list-accounts/index.ts` |
 | `calc-roundup` | `supabase/functions/calc-roundup/index.ts` |
 | `sync-bills` | `supabase/functions/sync-bills/index.ts` |
 | `sync-card-balances` | `supabase/functions/sync-card-balances/index.ts` |
@@ -295,8 +296,12 @@ function and delete the import line — it is the same code either way.
 
 ### Then, in the app
 
-- **Which card → Sync balances.** Cards are matched on their last four digits.
-  Anything unmatched is named in the toast rather than silently skipped.
+- **Which card → Connect to Lunch Money.** Lists every account it can see and
+  asks which one holds each card. A card's last four preselects a suggestion,
+  but nothing is linked until you save it. Mark anything that isn't in Lunch
+  Money as "I'll keep this one myself" — that is a real answer, not a skip.
+- **Which card → Sync balances.** Only fetches cards you connected. A linked
+  balance is read-only; an unlinked one is a field you type into.
 - **Calendar → Sync bills.** Pulls only recurring items you set by hand, not
   the ones Lunch Money infers, and generates nothing before `BILLS_FROM`.
 - **Round-up → Recalculate.** Uses the same category keywords as `roundup.py`.
