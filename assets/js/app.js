@@ -18,16 +18,9 @@ import './help.js';
 import * as whichCard from './screens/whichcard.js';
 import * as statements from './screens/statements.js';
 import * as paybacks from './screens/paybacks.js';
+import * as calendar from './screens/calendar.js';
 
 const PLACEHOLDERS = {
-  'cal': {
-    t: 'Calendar',
-    b: `The landing surface — a Monday-start grid with ISO week numbers, every day
-        clickable, and the day modal where notes live. Statement closes, payback
-        deadlines and targets populate it before any bill data exists, so it is
-        useful well before Lunch Money is connected.`,
-    step: 'step 6',
-  },
   'ru': {
     t: 'Round-up',
     b: `Two date pickers, category chips, and a total. Depends on the Lunch Money
@@ -76,16 +69,24 @@ async function main() {
   renderConnectionBanner();
   renderPlaceholders();
 
-  /* The two built screens. They share the same card and statement_closes rows,
-     so logging a close in one has to refresh the other — otherwise Which card
-     would keep ranking on a prediction that Statements has already replaced. */
+  /* The four built screens. They read overlapping rows — cards, statement
+     closes, paybacks — so a change in one has to reach the others. Logging a
+     close moves every predicted date, and Which card would otherwise keep
+     ranking on a prediction Statements has already replaced. */
   if (dbStatus().ok && session) {
-    statements.setChangeHandler(() => whichCard.refresh().catch(() => {}));
+    statements.setChangeHandler(() => {
+      whichCard.refresh().catch(() => {});
+      calendar.reload().catch(() => {});
+    });
     await Promise.all([
       whichCard.mount(document.getElementById('t-cards')),
       statements.mount(document.getElementById('t-stmt')),
       paybacks.mount(document.getElementById('t-pb')),
+      calendar.mount(document.getElementById('t-cal')),
     ]);
+    /* Paybacks and Statements both change what the calendar draws, so both
+       tell it to refetch rather than letting the grid go stale. */
+    paybacks.setChangeHandler(() => calendar.reload().catch(() => {}));
   }
 
   const out = document.getElementById('signOut');

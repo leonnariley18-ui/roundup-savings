@@ -162,3 +162,54 @@ export async function reschedulePayback(id, newDate, currentMoves) {
 export async function dismissPayback(id, dismissed) {
   await run(getDb().from('paybacks').update({ dismissed }).eq('id', id));
 }
+
+/* ---------------------------------------------------------------- notes */
+
+/* Notes live in the day modal and nowhere else — per-day, not a general
+ * notebook. There is nowhere on the calendar you cannot open and jot on. */
+export const loadNotes = () =>
+  run(getDb().from('notes').select('*').order('created_at', { ascending: true }));
+
+export async function addNote(onDate, body) {
+  const rows = await run(getDb().from('notes').insert({ on_date: onDate, body }).select());
+  return rows[0];
+}
+
+export async function updateNote(id, body) {
+  await run(getDb().from('notes').update({ body }).eq('id', id));
+}
+
+export async function removeNote(id) {
+  await run(getDb().from('notes').delete().eq('id', id));
+}
+
+/* ---------------------------------------------------------------- round-ups */
+
+/* A date and nothing else, deliberately. The amount lives in the bank, not
+ * here — a tracker that only ever sees money going in drifts into fiction the
+ * first time you withdraw some. */
+export const loadRoundupRuns = () =>
+  run(getDb().from('roundup_runs').select('*').order('ran_on', { ascending: false }));
+
+export async function addRoundupRun(ranOn) {
+  const rows = await run(getDb().from('roundup_runs').insert({ ran_on: ranOn }).select());
+  await logEvent('roundup_run', { ran_on: ranOn });
+  return rows[0];
+}
+
+export async function removeRoundupRun(id) {
+  await run(getDb().from('roundup_runs').delete().eq('id', id));
+}
+
+/* ---------------------------------------------------------------- bills */
+
+/* Empty until the Lunch Money sync exists. Returned in the shape the calendar
+ * expects so the grid works identically once they arrive. */
+export async function loadBills() {
+  const db = getDb();
+  const [bills, instances] = await Promise.all([
+    run(db.from('bills').select('*').eq('active', true)),
+    run(db.from('bill_instances').select('*')),
+  ]);
+  return { bills, billInstances: instances };
+}

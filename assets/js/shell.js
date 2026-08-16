@@ -139,10 +139,18 @@ export function initShell() {
   /* The pickers claim Escape first, in the capture phase, so a picker open
      inside a modal closes only itself. By the time it reaches here, nothing
      smaller is open. */
+  /* The day modal's own scrim and Escape handling live here so the calendar
+     screen doesn't have to own global listeners. */
+  document.getElementById('scrim').addEventListener('click', e => {
+    if (e.target.id === 'scrim') document.getElementById('scrim').hidden = true;
+  });
+
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     closeDrawer();
     closeLoan();
+    const scrim = document.getElementById('scrim');
+    if (scrim) scrim.hidden = true;
   });
 
   goTab('cal');
