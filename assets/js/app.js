@@ -59,7 +59,11 @@ async function main() {
       whichCard.refresh().catch(() => {});
       calendar.reload().catch(() => {});
     });
-    await Promise.all([
+    /* allSettled, not all. Each screen renders its own error state, so one
+       failing load should cost that screen and nothing else — with `all`, a
+       single rejected mount escapes to main() and the shell never appears at
+       all, turning one broken table into a blank page. */
+    const mounted = await Promise.allSettled([
       whichCard.mount(document.getElementById('t-cards')),
       statements.mount(document.getElementById('t-stmt')),
       paybacks.mount(document.getElementById('t-pb')),
@@ -67,6 +71,8 @@ async function main() {
       loan.load(),
       roundup.mount(document.getElementById('t-ru')),
     ]);
+    mounted.filter(m => m.status === 'rejected')
+           .forEach(m => console.warn('screen failed to load:', m.reason));
     roundup.setChangeHandler(() => calendar.reload().catch(() => {}));
     /* The loan is a modal with two entry points — the drawer and the week
        view's loan row — so it is registered as a renderer rather than mounted

@@ -11,7 +11,7 @@
 import { today, add, key, pd, fmtD, fmtDW, money, DW, dayIndex, daysBetween } from '../dates.js';
 import { rankCards } from '../ranking.js';
 import { loadCards, loadDecisions, logDecision, removeDecision, setCapBlown,
-         setChoiceCategory, callFunction } from '../data.js';
+         setChoiceCategory, callFunction, setCardBalance } from '../data.js';
 import { dateField, onDateChange, setDate } from '../ui/datepicker.js';
 import { selectField, onSelectChange } from '../ui/select.js';
 import { toast } from '../ui/toast.js';
@@ -217,8 +217,12 @@ function rowHTML(r, best) {
     <td class="mono">${tilde}Closes ${fmtD(r.close)}
       <div class="cs">Due ${fmtD(r.due)}</div>
       ${r.why ? `<div class="cs" style="color:var(--warn)">${r.why}</div>` : ''}</td>
-    <td class="mono">${money(r.card.current_balance)}
-      <div class="cs">${r.util.toFixed(0)}% of $${limit.toLocaleString()}</div></td>
+    <td class="mono">
+      <span class="balin"><span>$</span><input type="number" min="0" step="0.01"
+        value="${Number(r.card.current_balance).toFixed(2)}"
+        data-bal="${r.card.id}" aria-label="Balance on ${r.card.name}"></span>
+      <div class="cs">${r.util.toFixed(0)}% of $${limit.toLocaleString()}</div>
+      <div class="cs ${ageClass(r.card)}">${ageLine(r.card)}</div></td>
     <td class="mono">${r.card.apr == null
       ? '<span style="color:var(--warn)">not set</span>'
       : Number(r.card.apr).toFixed(2) + '%'}</td>
@@ -232,10 +236,43 @@ function rowHTML(r, best) {
  * a day or two of lag is irrelevant to a rule whose threshold is "any balance
  * at all", but pretending it is live would not be. */
 function syncedLine(cards) {
-  const stamps = cards.map(c => c.balance_synced_at).filter(Boolean).sort();
-  if (!stamps.length) return 'Balances have never been synced — they are the figures from setup.';
-  const when = new Date(stamps[stamps.length - 1]);
-  return `Balances synced ${when.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · treat as an estimate`;
+  const seeded = cards.filter(c => (c.balance_source || 'seed') === 'seed').length;
+  if (seeded === cards.length) {
+    return 'No balance has been checked yet — these are the figures from setup';
+  }
+  const stale = cards.filter(c => daysOld(c) != null && daysOld(c) > 7).length;
+  const parts = [];
+  if (seeded) parts.push(`${seeded} never checked`);
+  if (stale) parts.push(`${stale} over a week old`);
+  return parts.length ? `Balances: ${parts.join(' · ')}` : 'Balances are current';
+}
+
+/* How long ago this balance was last established, in days. */
+function daysOld(card) {
+  if (!card.balance_synced_at) return null;
+  return Math.floor((Date.now() - new Date(card.balance_synced_at)) / 864e5);
+}
+
+/* Says where the figure came from and how old it is.
+ *
+ * A balance decides whether a card is recommended at all, so an unchecked one
+ * is not a cosmetic gap — it is the app asserting something it does not know.
+ * The seeded figures say so outright rather than looking like fact. */
+function ageLine(card) {
+  const source = card.balance_source || 'seed';
+  if (source === 'seed') return 'from setup — never checked';
+  const days = daysOld(card);
+  const how = source === 'lunchmoney' ? 'synced' : 'you set this';
+  if (days === 0) return `${how} today`;
+  if (days === 1) return `${how} yesterday`;
+  return `${how} ${days} days ago`;
+}
+
+function ageClass(card) {
+  const source = card.balance_source || 'seed';
+  if (source === 'seed') return 'balage warn';
+  const days = daysOld(card);
+  return days != null && days > 7 ? 'balage warn' : 'balage';
 }
 
 function bofaCard() {
@@ -392,6 +429,20 @@ function wire() {
       render();
       toast('Removed');
     } catch (err) { toast("Couldn't remove that: " + err.message); }
+  });
+
+  /* onchange, not oninput — the table repaints on save, and doing that per
+     keystroke would fight the cursor. */
+  host.querySelectorAll('[data-bal]').forEach(input => input.onchange = async () => {
+    const value = parseFloat(input.value);
+    if (!isFinite(value) || value < 0) { toast('Enter the balance, or 0'); return; }
+    try {
+      await setCardBalance(input.dataset.bal, value);
+      state.data = await loadCards();
+      render();
+      toast(value > 0 ? 'Saved — that card is out of recommendations while it carries a balance'
+                      : 'Saved — back in the running');
+    } catch (err) { toast("Couldn't save that: " + err.message); }
   });
 
   const sync = host.querySelector('#syncBal');

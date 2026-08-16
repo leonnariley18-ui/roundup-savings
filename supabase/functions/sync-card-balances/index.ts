@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       /* Lunch Money reports card balances as a positive amount owed. */
       const balance = Math.abs(hit.balance);
       const { error: upErr } = await supabase.from('cards')
-        .update({ current_balance: balance, balance_synced_at: now })
+        .update({ current_balance: balance, balance_synced_at: now, balance_source: 'lunchmoney' })
         .eq('id', card.id);
       if (upErr) throw upErr;
       updated.push(`${card.name}: ${balance.toFixed(2)}`);

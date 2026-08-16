@@ -75,6 +75,17 @@ export async function setApr(cardId, apr) {
   await run(getDb().from('cards').update({ apr }).eq('id', cardId));
 }
 
+/* A typed balance records when it was typed. Without that the figure is
+ * indistinguishable from a synced one, and the whole point is that the reader
+ * can tell how much to trust it. */
+export async function setCardBalance(cardId, balance) {
+  await run(getDb().from('cards').update({
+    current_balance: balance,
+    balance_synced_at: new Date().toISOString(),
+    balance_source: 'manual',
+  }).eq('id', cardId));
+}
+
 export async function setCapBlown(cardId, blown) {
   await run(getDb().from('cards').update({ cap_blown: blown }).eq('id', cardId));
 }

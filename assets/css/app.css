@@ -629,3 +629,14 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
   padding-top:12px;border-top:1px solid var(--soft);
   font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 .syncrow button{margin-left:auto}
+
+/* editable balance, with its age underneath */
+.balin{display:inline-flex;align-items:center;gap:2px;border-bottom:1px solid transparent}
+.balin span{color:var(--faint);font-size:12px}
+.balin input{background:transparent;border:0;color:var(--text);font-family:var(--mono);
+  font-size:13px;width:74px;outline:none;padding:1px 0;font-variant-numeric:tabular-nums;
+  -moz-appearance:textfield}
+.balin input::-webkit-outer-spin-button,.balin input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.balin:hover,.balin:focus-within{border-bottom-color:var(--accent)}
+.cs.balage{color:var(--faint);margin-top:2px}
+.cs.balage.warn{color:var(--warn)}
