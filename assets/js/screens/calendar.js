@@ -11,7 +11,8 @@
 import { today, add, mon, key, pd, isoWeek, fmtD, money, MN, MFULL, DW, dayIndex, isPayday } from '../dates.js';
 import { buildIndex, eventsOn, eventsBetween, ORDER } from '../events.js';
 import { loadCards, loadPaybacks, loadNotes, loadRoundupRuns, loadBills,
-         addNote, updateNote, removeNote, removeRoundupRun } from '../data.js';
+         addNote, updateNote, removeNote, removeRoundupRun,
+         setBillPaid, setBillAmount, callFunction } from '../data.js';
 import { toast } from '../ui/toast.js';
 import { setMastWord, goTab, openLoan } from '../shell.js';
 
@@ -108,6 +109,7 @@ function renderMonth() {
     <div class="chead">
       ${y === today().getFullYear() ? '' : `<h3>${y}</h3>`}
       <div class="nav">
+        <button class="tbtn" id="syncBills" title="Pull recurring items from Lunch Money">Sync bills</button>
         <button class="tbtn" id="calToday">Today</button>
         <button class="arrow" id="calPrev" aria-label="Previous month"><svg viewBox="0 0 12 12" fill="none"><path d="M7.5 2L3.5 6l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="arrow" id="calNext" aria-label="Next month"><svg viewBox="0 0 12 12" fill="none"><path d="M4.5 2l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -133,6 +135,21 @@ function renderMonth() {
   view.querySelector('#calToday').onclick = () => {
     calMonth = new Date(today().getFullYear(), today().getMonth(), 1); renderMonth();
   };
+  const sync = view.querySelector('#syncBills');
+  if (sync) sync.onclick = async () => {
+    sync.disabled = true; sync.textContent = 'Syncing…';
+    try {
+      const out = await callFunction('sync-bills');
+      await reload();
+      const n = out.created.length + out.updated.length;
+      toast(n ? `Synced ${n} bill${n === 1 ? '' : 's'} from ${out.from} onward`
+              : 'No manually-set recurring items found in Lunch Money');
+    } catch (err) {
+      sync.disabled = false; sync.textContent = 'Sync bills';
+      toast("Couldn't sync: " + err.message);
+    }
+  };
+
   view.querySelectorAll('[data-wk]').forEach(b => b.onclick = () => openWeek(pd(b.dataset.wk)));
   view.querySelectorAll('[data-day]').forEach(b => b.onclick = () => openDay(b.dataset.day));
 }
@@ -192,6 +209,39 @@ function renderWeek() {
   view.querySelector('#wkBack').onclick = () => renderMonth();
   view.querySelector('#wkPrev').onclick = () => { weekAnchor = add(weekAnchor, -7); renderWeek(); };
   view.querySelector('#wkNext').onclick = () => { weekAnchor = add(weekAnchor, 7); renderWeek(); };
+  /* Ticking records "I looked at it", not "the charge posted". Autopay bills
+     are never auto-ticked: a failed autopay is the case most worth seeing, and
+     an auto-tick would hide exactly that. */
+  view.querySelectorAll('.tick').forEach(t => t.onclick = async () => {
+    const row = t.closest('.row');
+    const id = row.dataset.instance;
+    const nowPaid = !row.classList.contains('paid');
+    row.classList.toggle('paid');
+    weekSummary();
+    try {
+      await setBillPaid(id, nowPaid ? key(today()) : null);
+      const inst = data.billInstances.find(b => b.id === id);
+      if (inst) inst.paid_at = nowPaid ? key(today()) : null;
+    } catch (err) {
+      row.classList.toggle('paid');
+      weekSummary();
+      toast("Couldn't save that: " + err.message);
+    }
+  });
+
+  view.querySelectorAll('.row .v').forEach(input => {
+    input.oninput = () => weekSummary();
+    input.onchange = async () => {
+      const id = input.closest('.row').dataset.instance;
+      const amount = parseFloat(input.value) || 0;
+      try {
+        await setBillAmount(id, amount);
+        const inst = data.billInstances.find(b => b.id === id);
+        if (inst) inst.amount = amount;
+      } catch (err) { toast("Couldn't save that: " + err.message); }
+    };
+  });
+
   view.querySelectorAll('[data-noteday]').forEach(r => r.onclick = () => openDay(r.dataset.noteday));
   view.querySelectorAll('[data-gostmt]').forEach(r => r.onclick = () => goTab('stmt'));
   view.querySelectorAll('[data-goloan]').forEach(r => r.addEventListener('click', ev => {
@@ -208,7 +258,8 @@ function rowHTML(e) {
     <div class="m">${MN[d.getMonth()]}</div></div>`;
 
   if (e.type === 'bill') {
-    return `<div class="row${e.paid ? ' paid' : ''}${e.isLoan ? ' loanrow' : ''}"${e.isLoan ? ' data-goloan="1"' : ''}>
+    return `<div class="row${e.paid ? ' paid' : ''}${e.isLoan ? ' loanrow' : ''}"
+      data-instance="${e.ref.instance.id}"${e.isLoan ? ' data-goloan="1"' : ''}>
       <button class="tick" aria-label="Toggle paid"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6.2l2.6 2.6L10 3.4" stroke="#1a0f2b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       ${when}
       <div class="nm"><div class="n">${esc(e.label)}</div>

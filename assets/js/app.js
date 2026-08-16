@@ -20,28 +20,9 @@ import * as statements from './screens/statements.js';
 import * as paybacks from './screens/paybacks.js';
 import * as calendar from './screens/calendar.js';
 import * as loan from './screens/loan.js';
+import * as roundup from './screens/roundup.js';
 
-const PLACEHOLDERS = {
-  'ru': {
-    t: 'Round-up',
-    b: `Two date pickers, category chips, and a total. Depends on the Lunch Money
-        proxy, so it comes late. "I moved the money" will write a date and nothing
-        else — the amount lives in your bank, not here.`,
-    step: 'step 7',
-  },
-};
 
-function renderPlaceholders() {
-  for (const [k, p] of Object.entries(PLACEHOLDERS)) {
-    const host = document.getElementById('t-' + k);
-    if (!host) continue;
-    host.innerHTML = `<div class="soon">
-        <div class="t">${p.t}</div>
-        <div class="b">${p.b}</div>
-        <div class="step">Not built yet · build order ${p.step}</div>
-      </div>`;
-  }
-}
 
 function renderConnectionBanner() {
   const el = document.getElementById('conn');
@@ -68,7 +49,6 @@ async function main() {
   document.getElementById('appWrap').hidden = false;
 
   renderConnectionBanner();
-  renderPlaceholders();
 
   /* The four built screens. They read overlapping rows — cards, statement
      closes, paybacks — so a change in one has to reach the others. Logging a
@@ -85,7 +65,9 @@ async function main() {
       paybacks.mount(document.getElementById('t-pb')),
       calendar.mount(document.getElementById('t-cal')),
       loan.load(),
+      roundup.mount(document.getElementById('t-ru')),
     ]);
+    roundup.setChangeHandler(() => calendar.reload().catch(() => {}));
     /* The loan is a modal with two entry points — the drawer and the week
        view's loan row — so it is registered as a renderer rather than mounted
        into a tab. */

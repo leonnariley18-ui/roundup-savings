@@ -621,3 +621,11 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
   color:var(--warn);border-left:3px solid var(--warn);padding:10px 14px;margin-bottom:20px;line-height:1.8}
 .conn[hidden]{display:none}
 .conn a{color:var(--accent)}
+
+/* ---------- sync controls ---------- */
+/* A balance is an estimate with an age, so the timestamp sits beside the
+   control that changes it rather than hiding in a tooltip. */
+.syncrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px;
+  padding-top:12px;border-top:1px solid var(--soft);
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.syncrow button{margin-left:auto}

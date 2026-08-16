@@ -247,3 +247,36 @@ export async function removeDebtPayment(id) {
 export async function setDebtBalance(debtId, balance) {
   await run(getDb().from('debts').update({ current_balance: balance }).eq('id', debtId));
 }
+
+/* ---------------------------------------------------------------- functions */
+
+/* Every Lunch Money call goes through an Edge Function. The token lives in
+ * Supabase secrets and must never reach the browser, so there is deliberately
+ * no direct path from this file to Lunch Money. */
+export async function callFunction(name, body = {}) {
+  const db = getDb();
+  if (!db) throw new Error('Not connected to Supabase');
+  const { data, error } = await db.functions.invoke(name, { body });
+  if (error) {
+    /* Supabase wraps the function's own message; surfacing it is what makes a
+       missing secret or an unmatched card diagnosable from the UI. */
+    const detail = data && data.error ? data.error : error.message;
+    throw new Error(detail);
+  }
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+
+/* ---------------------------------------------------------------- bill instances */
+
+/* Marking a bill paid is local and manual. Nothing reads Lunch Money's
+ * reviewed flag and nothing writes back — the tick records "I looked at it",
+ * not "the charge posted", and those come apart exactly when it matters. */
+export async function setBillPaid(instanceId, paidAt) {
+  await run(getDb().from('bill_instances').update({ paid_at: paidAt }).eq('id', instanceId));
+  if (paidAt) await logEvent('bill_paid', { bill_instance_id: instanceId, paid_at: paidAt });
+}
+
+export async function setBillAmount(instanceId, amount) {
+  await run(getDb().from('bill_instances').update({ amount }).eq('id', instanceId));
+}

@@ -10,7 +10,8 @@
 
 import { today, add, key, pd, fmtD, fmtDW, money, DW, dayIndex, daysBetween } from '../dates.js';
 import { rankCards } from '../ranking.js';
-import { loadCards, loadDecisions, logDecision, removeDecision, setCapBlown, setChoiceCategory } from '../data.js';
+import { loadCards, loadDecisions, logDecision, removeDecision, setCapBlown,
+         setChoiceCategory, callFunction } from '../data.js';
 import { dateField, onDateChange, setDate } from '../ui/datepicker.js';
 import { selectField, onSelectChange } from '../ui/select.js';
 import { toast } from '../ui/toast.js';
@@ -98,6 +99,11 @@ function render() {
           <th>Back</th><th>Float</th><th>Statement</th><th>Balance</th><th>APR</th></tr></thead>
         <tbody>${rows.map(r => rowHTML(r, best)).join('')}</tbody>
       </table>
+    </div>
+
+    <div class="syncrow">
+      <span>${syncedLine(cards)}</span>
+      <button class="tbtn" id="syncBal">Sync balances</button>
     </div>
 
     <div class="panel" style="margin-top:13px" id="bofaPanel">${bofaHTML()}</div>
@@ -220,6 +226,17 @@ function rowHTML(r, best) {
 }
 
 /* ---------------------------------------------------------------- BofA */
+
+/* A balance is an estimate with an age. Lunch Money background-syncs a single
+ * figure through Plaid, so anywhere one appears it says when it last moved —
+ * a day or two of lag is irrelevant to a rule whose threshold is "any balance
+ * at all", but pretending it is live would not be. */
+function syncedLine(cards) {
+  const stamps = cards.map(c => c.balance_synced_at).filter(Boolean).sort();
+  if (!stamps.length) return 'Balances have never been synced — they are the figures from setup.';
+  const when = new Date(stamps[stamps.length - 1]);
+  return `Balances synced ${when.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · treat as an estimate`;
+}
 
 function bofaCard() {
   return state.data.cards.find(c => c.cap_limit != null) || null;
@@ -376,6 +393,22 @@ function wire() {
       toast('Removed');
     } catch (err) { toast("Couldn't remove that: " + err.message); }
   });
+
+  const sync = host.querySelector('#syncBal');
+  if (sync) sync.onclick = async () => {
+    sync.disabled = true; sync.textContent = 'Syncing…';
+    try {
+      const out = await callFunction('sync-card-balances');
+      state.data = await loadCards();
+      render();
+      toast(out.unmatched && out.unmatched.length
+        ? `Synced ${out.updated.length} · no match for ${out.unmatched.join(', ')}`
+        : `Synced ${out.updated.length} card${out.updated.length === 1 ? '' : 's'}`);
+    } catch (err) {
+      sync.disabled = false; sync.textContent = 'Sync balances';
+      toast("Couldn't sync: " + err.message);
+    }
+  };
 
   const help = host.querySelector('[data-help]');
   if (help) help.onclick = () => openHelp('cards');

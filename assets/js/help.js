@@ -38,6 +38,16 @@ const HELP = {
     date</b> is when it stops being optional. Only the second one costs you anything.</p>
     <p class="dim">Something logged as "not a card" has no close date, so only your target applies.
     It stays open until you clear it.</p>` },
+  ru: { t: 'Round-up', b: `
+    <p>Pulls your categorized transactions in the selected categories, rounds each up to the next
+    dollar, and totals the difference.</p>
+    <p>Run it after a categorizing session. It isn't scheduled, because categorizing isn't.</p>
+    <p>Groceries, subscriptions and pay-later plans stay out on purpose.</p>
+    <p>Anything uncategorised in the range is counted and reported rather than guessed at —
+    categorise it in Lunch Money and run it again.</p>
+    <p class="dim">There's no running total and no transfer log here. A tracker that only sees money
+    going in drifts into fiction the first time you withdraw some. "I moved the money" records the
+    date on your calendar and nothing else.</p>` },
 };
 
 export function openHelp(kind) {
