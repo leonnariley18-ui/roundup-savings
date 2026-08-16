@@ -30,6 +30,14 @@ const HELP = {
     closes</b> confirms a card, which takes about three months.</p>
     <p>Nothing here is ever predicted into the record. Every date in your log is one you observed,
     which is why removing a mistyped one immediately re-derives everything built on it.</p>` },
+  pb: { t: 'Why the countdown runs to statement close', b: `
+    <p>Once a purchase lands on a closed statement it's a bill — it shows up on the calendar, counts
+    against the month's money, and stops being something you quietly clear with the next paycheck.</p>
+    <p>Clear it before close and it never appears at all.</p>
+    <p>Two dates get tracked. <b>Your target</b> is the day you said you'd handle it. <b>The close
+    date</b> is when it stops being optional. Only the second one costs you anything.</p>
+    <p class="dim">Something logged as "not a card" has no close date, so only your target applies.
+    It stays open until you clear it.</p>` },
 };
 
 export function openHelp(kind) {

@@ -103,3 +103,62 @@ export async function logDecision({ cardId, category, amount, rewardPct, rewardA
 export async function removeDecision(id) {
   await run(getDb().from('card_decisions').delete().eq('id', id));
 }
+
+/* ---------------------------------------------------------------- paybacks */
+
+export async function loadPaybacks() {
+  const db = getDb();
+  const [paybacks, payments] = await Promise.all([
+    run(db.from('paybacks').select('*').order('created_at', { ascending: false })),
+    run(db.from('payback_payments').select('*').order('paid_at', { ascending: true })),
+  ]);
+
+  const paymentsByPayback = {};
+  payments.forEach(p => (paymentsByPayback[p.payback_id] ||= []).push(p));
+
+  return { paybacks, paymentsByPayback };
+}
+
+export async function createPayback({ description, amount, cardId, incurredOn, intendedOn }) {
+  const rows = await run(getDb().from('paybacks').insert({
+    description, amount,
+    card_id: cardId || null,          // null = off-card, and it stays that way
+    incurred_on: incurredOn,
+    intended_payback_on: intendedOn,
+  }).select());
+  return rows[0];
+}
+
+export async function addPayment(paybackId, amount, paidAt) {
+  const rows = await run(getDb().from('payback_payments')
+    .insert({ payback_id: paybackId, amount, paid_at: paidAt }).select());
+  return rows[0];
+}
+
+/* Undo removes the last payment rather than zeroing the total, so a mistyped
+ * figure costs one click and the rest of the history survives. */
+export async function removeLastPayment(paybackId, payments) {
+  if (!payments.length) return;
+  const last = payments[payments.length - 1];
+  await run(getDb().from('payback_payments').delete().eq('id', last.id));
+  return last;
+}
+
+export async function setPaybackStatus(id, status) {
+  await run(getDb().from('paybacks').update({ status }).eq('id', id));
+}
+
+/* The count is stored and never displayed. Surfacing it would turn a helpful
+ * affordance into a scold, and the point of offering a new date is that moving
+ * one is not a failure. */
+export async function reschedulePayback(id, newDate, currentMoves) {
+  await run(getDb().from('paybacks')
+    .update({ intended_payback_on: newDate, moves: (currentMoves || 0) + 1 }).eq('id', id));
+  await logEvent('payback_rescheduled', { payback_id: id, to: newDate });
+}
+
+/* Sets a flag, never deletes. The purchase is still on that statement whether
+ * or not you want to look at it. */
+export async function dismissPayback(id, dismissed) {
+  await run(getDb().from('paybacks').update({ dismissed }).eq('id', id));
+}

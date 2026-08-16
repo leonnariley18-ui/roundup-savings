@@ -17,6 +17,7 @@ import './help.js';
 
 import * as whichCard from './screens/whichcard.js';
 import * as statements from './screens/statements.js';
+import * as paybacks from './screens/paybacks.js';
 
 const PLACEHOLDERS = {
   'cal': {
@@ -33,13 +34,6 @@ const PLACEHOLDERS = {
         proxy, so it comes late. "I moved the money" will write a date and nothing
         else — the amount lives in your bank, not here.`,
     step: 'step 7',
-  },
-  'pb': {
-    t: 'Paybacks',
-    b: `Tracks putting something on a card meaning to clear it in days, forgetting,
-        and having it quietly become a bill. The countdown runs to statement close,
-        not to the payment due date.`,
-    step: 'step 4',
   },
 };
 
@@ -90,6 +84,7 @@ async function main() {
     await Promise.all([
       whichCard.mount(document.getElementById('t-cards')),
       statements.mount(document.getElementById('t-stmt')),
+      paybacks.mount(document.getElementById('t-pb')),
     ]);
   }
 
