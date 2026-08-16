@@ -6,6 +6,7 @@ Supabase project — new or one you already have — with the six cards and the
 loan seeded.
 
 Steps 1–4 are the database, step 5 connects the site to it, step 6 publishes.
+Step 7 is Lunch Money, and is only needed for Round-up and Bills.
 The site is deliberately usable before any of this — it renders the shell and
 says it is not connected — so you can do step 6 first if you want to see
 something live immediately.
@@ -253,7 +254,65 @@ pre-payday email exactly as before.
 If you are working on the `claude/new-dashboard-setup-g5o8sq` branch, either
 merge it to `main` first or point Pages at that branch while you try it.
 
-## 7. Check it worked
+## 7. Lunch Money (steps 7 and 8 only)
+
+Skip this until you want Round-up and Bills. Everything else works without it.
+
+The Lunch Money token is a **real secret**, unlike the anon key. It lives in
+Supabase secrets and is only ever read inside an Edge Function — there is
+deliberately no path from the browser to Lunch Money.
+
+### Set the secrets
+
+**Project Settings → Edge Functions → Secrets.** Add three:
+
+| Name | Value |
+| --- | --- |
+| `LUNCHMONEY_TOKEN` | Your token from [my.lunchmoney.app/developers](https://my.lunchmoney.app/developers) |
+| `LEDGER_USER_ID` | Your Ledger user's UID — the same one you seeded with |
+| `BILLS_FROM` | `2026-08-01`, or whenever bills should start |
+
+`LEDGER_USER_ID` matters here more than it would on a dedicated project. A
+valid JWT is not proof of identity when the project is shared with an app whose
+sign-ups may be open — anyone with an account there presents one. Each function
+checks the caller against this before spending the token or returning what it
+fetched.
+
+### Deploy the functions
+
+**Edge Functions → Deploy a new function** in the dashboard, once per function.
+No CLI needed.
+
+| Function | Paste from |
+| --- | --- |
+| `calc-roundup` | `supabase/functions/calc-roundup/index.ts` |
+| `sync-bills` | `supabase/functions/sync-bills/index.ts` |
+| `sync-card-balances` | `supabase/functions/sync-card-balances/index.ts` |
+
+Each imports `../_shared/lunchmoney.ts`. If the dashboard editor won't let you
+add a second file, paste the contents of that shared file at the top of each
+function and delete the import line — it is the same code either way.
+
+### Then, in the app
+
+- **Which card → Sync balances.** Cards are matched on their last four digits.
+  Anything unmatched is named in the toast rather than silently skipped.
+- **Calendar → Sync bills.** Pulls only recurring items you set by hand, not
+  the ones Lunch Money infers, and generates nothing before `BILLS_FROM`.
+- **Round-up → Recalculate.** Uses the same category keywords as `roundup.py`.
+
+Re-running any of them is safe. Bills match on their Lunch Money id so they
+never duplicate, and an instance you have already ticked or edited is never
+overwritten.
+
+### The old workflow
+
+`daily.yml` still runs the Python round-up. Once the Round-up tab is doing what
+you want, that workflow can be disabled — it is the same calculation by email.
+**Leave `sweep.yml` alone**; the Wednesday pre-payday sweep is out of scope and
+still useful.
+
+## 8. Check it worked
 
 Open the site. You should get the sign-in gate rather than the shell. Sign in
 with the account from step 3.
