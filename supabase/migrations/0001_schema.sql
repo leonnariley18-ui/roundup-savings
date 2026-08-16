@@ -14,9 +14,35 @@
 -- a policy that joins is slower and harder to read, and the value can never
 -- disagree because nothing writes these tables but the owner.
 
-create extension if not exists "pgcrypto";
+-- No `create extension pgcrypto` here. gen_random_uuid() has been part of
+-- Postgres core since version 13 — it lives in pg_catalog, not in pgcrypto —
+-- and Supabase runs 15+. The extension was never needed, and asking for it
+-- fails outright on Supabase, where the SQL editor's role is not permitted to
+-- create extensions: `ERROR: 42501: permission denied for database postgres`.
 
-create schema if not exists ledger;
+-- Not a plain `create schema if not exists ledger`. CREATE SCHEMA needs the
+-- CREATE privilege on the database, which the Supabase SQL editor's role does
+-- not always have — and IF NOT EXISTS does not rescue it, because Postgres runs
+-- the permission check BEFORE the existence check. On a locked-down project that
+-- statement fails even when the schema is already sitting there.
+--
+-- So: look first, and only attempt creation if it is genuinely missing. A role
+-- that can create schemas gets one made; a role that cannot, but whose schema
+-- already exists, sails past untouched.
+do $$
+begin
+  if not exists (select 1 from pg_namespace where nspname = 'ledger') then
+    begin
+      execute 'create schema ledger';
+    exception when insufficient_privilege then
+      raise exception using
+        message = 'The `ledger` schema does not exist and this role cannot create it.',
+        hint = 'Create it in the Supabase dashboard first: Table Editor -> the schema '
+               'dropdown (it says "public") -> New schema -> name it `ledger`. '
+               'Then run this file again.';
+    end;
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------- cards
 
