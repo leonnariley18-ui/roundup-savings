@@ -10,8 +10,8 @@
  * Supabase secrets and are only ever touched by Edge Functions.
  */
 
-export const SUPABASE_URL = '';
-export const SUPABASE_ANON_KEY = '';
+export const SUPABASE_URL = 'https://pukzhmhevjbfwvhjzppr.supabase.co';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3pobWhldmpiZnd2aGp6cHByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NjUzNTYsImV4cCI6MjA5MzM0MTM1Nn0.-Jl1tv-xeOTwv6cd-OgF-ovooLfYyzoaA2c7Seax3Zo';
 
 /* Wells Fargo Rewards points are worth exactly 1 cent across every standard
  * redemption, so 3x genuinely equals 3%. Transfer partners can beat that but
