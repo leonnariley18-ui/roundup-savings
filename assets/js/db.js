@@ -42,7 +42,19 @@ export async function initDb() {
   try {
     const { createClient } = await import(/* @vite-ignore */ CDN);
     client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        /* Ledger keeps its session in its own localStorage slot. By default
+           supabase-js derives the key from the project ref alone —
+           `sb-<ref>-auth-token` — which is fine until two apps share both a
+           project and an origin. Every GitHub Pages site under one account is
+           one origin, so a second app on this project would land in the same
+           slot: signing into one silently overwrites the other's session, and
+           the displaced app then queries as the wrong user and correctly shows
+           nothing. Naming the key keeps the two sessions apart. */
+        storageKey: 'ledger-auth-token'
+      },
       /* Every table lives in `ledger`, not `public`, so this app can share a
          project with another one without colliding with it. Supabase must also
          be told to expose the schema — Settings → API → Exposed schemas. */
