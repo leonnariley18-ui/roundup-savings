@@ -14,10 +14,11 @@
 import { key, pd, add, daysBetween } from './dates.js';
 import { predictClose, analyse } from './statements.js';
 import { derive } from './paybacks.js';
+import { occurrencesWithState } from './bills.js';
 
 /* Sort order within a single day. Bills first because they are the money
  * actually leaving; notes last because they are commentary on the rest. */
-export const ORDER = { bill: 0, close: 1, pbk: 2, pbwant: 3, roundup: 4, note: 5 };
+export const ORDER = { bill: 0, remind: 1, close: 2, pbk: 3, pbwant: 4, roundup: 5, note: 6 };
 
 /* Every predicted close for one card that falls inside a range.
  *
@@ -46,14 +47,33 @@ export function buildIndex({ cards = [], closesByCard = {}, paybacks = [], payme
   const index = {};
   const push = e => (index[e.date] ||= []).push(e);
 
-  billInstances.forEach(bi => {
-    const bill = bills.find(b => b.id === bi.bill_id);
-    if (!bill) return;
-    const k = bi.due_date;
-    if (k < key(from) || k > key(to)) return;
-    push({ type: 'bill', date: k, label: bill.name, sub: bill.category || '',
-           amount: Number(bi.amount), colour: bill.links_to_debt_id ? 'var(--loan)' : 'var(--accent)',
-           ref: { bill, instance: bi }, paid: !!bi.paid_at, isLoan: !!bill.links_to_debt_id });
+  /* Occurrences are derived, so a bill entered today is on the calendar for
+     2031 immediately and nothing has to be generated ahead. A reminder is
+     pulled a few days earlier — it can fall outside the window its bill is in,
+     so reminders are gathered over a widened range and then filtered. */
+  bills.forEach(bill => {
+    const reach = bill.reminder_days_before || 0;
+    occurrencesWithState(bill, billInstances, from, add(to, reach)).forEach(occ => {
+      if (occ.dateKey >= key(from) && occ.dateKey <= key(to)) {
+        push({ type: 'bill', date: occ.dateKey, label: bill.name, sub: bill.category || '',
+               amount: occ.amount,
+               colour: bill.links_to_debt_id ? 'var(--loan)' : 'var(--accent)',
+               ref: { bill, occurrence: occ }, paid: occ.paid,
+               isLoan: !!bill.links_to_debt_id, isAuto: !!bill.is_auto });
+      }
+
+      /* The reminder exists only because the occurrence does, which is what
+         makes it vanish when the bill ends — nothing to clean up. */
+      if (occ.reminder) {
+        const rk = key(occ.reminder.date);
+        if (rk >= key(from) && rk <= key(to)) {
+          push({ type: 'remind', date: rk, label: occ.reminder.text,
+                 sub: `${bill.name} · ${occ.amount ? '$' + Math.round(occ.amount) : ''} due ${occ.dateKey.slice(8)}${monthAbbr(occ.date)}`,
+                 amount: null, colour: 'var(--warn)',
+                 ref: { bill, occurrence: occ }, done: occ.reminderDone });
+        }
+      }
+    });
   });
 
   cards.forEach(card => {
@@ -104,6 +124,9 @@ export function buildIndex({ cards = [], closesByCard = {}, paybacks = [], payme
   Object.values(index).forEach(list => list.sort((a, b) => ORDER[a.type] - ORDER[b.type]));
   return index;
 }
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const monthAbbr = d => ' ' + MONTHS[d.getMonth()];
 
 export const eventsOn = (index, k) => index[k] || [];
 

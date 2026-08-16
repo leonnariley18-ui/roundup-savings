@@ -8,11 +8,12 @@
  * and nowhere else.
  */
 
-import { today, add, mon, key, pd, isoWeek, fmtD, money, MN, MFULL, DW, dayIndex, isPayday } from '../dates.js';
+import { today, add, mon, key, pd, isoWeek, fmtD, money, MN, MFULL, DW, dayIndex } from '../dates.js';
+import { isPaydayOn } from '../bills.js';
 import { buildIndex, eventsOn, eventsBetween, ORDER } from '../events.js';
 import { loadCards, loadPaybacks, loadNotes, loadRoundupRuns, loadBills,
          addNote, updateNote, removeNote, removeRoundupRun,
-         setBillPaid, setBillAmount, callFunction } from '../data.js';
+         touchOccurrence, loadPaydayOverrides, movePayday, clearPaydayOverride } from '../data.js';
 import { toast } from '../ui/toast.js';
 import { setMastWord, goTab, openLoan } from '../shell.js';
 
@@ -39,10 +40,11 @@ export async function mount(el) {
 }
 
 export async function reload() {
-  const [cards, pbs, notes, runs, bills] = await Promise.all([
+  const [cards, pbs, notes, runs, bills, paydays] = await Promise.all([
     loadCards(), loadPaybacks(), loadNotes(), loadRoundupRuns(), loadBills(),
+    loadPaydayOverrides(),
   ]);
-  data = { ...cards, ...pbs, notes, roundupRuns: runs, ...bills };
+  data = { ...cards, ...pbs, notes, roundupRuns: runs, ...bills, paydayOverrides: paydays };
   repaint();
 }
 
@@ -57,6 +59,9 @@ function indexFor(from, to) {
 }
 
 const notesOn = k => (data.notes || []).filter(n => n.on_date === k);
+
+/* Payday is Thursday unless that week says otherwise. */
+const payday = d => isPaydayOn(d, data.paydayOverrides || []);
 
 /* ---------------------------------------------------------------- month */
 
@@ -91,7 +96,7 @@ function renderMonth() {
       const cls = ['cell'];
       if (outside) cls.push('out');
       if (k === todayKey) cls.push('today');
-      if (isPayday(d)) cls.push('pay');
+      if (payday(d)) cls.push('pay');
 
       /* Short bars, never circles — circles read as notification pips. */
       const pips = events.map(e => `<i style="background:${e.colour}"></i>`).join('');
@@ -109,7 +114,6 @@ function renderMonth() {
     <div class="chead">
       ${y === today().getFullYear() ? '' : `<h3>${y}</h3>`}
       <div class="nav">
-        <button class="tbtn" id="syncBills" title="Pull recurring items from Lunch Money">Sync bills</button>
         <button class="tbtn" id="calToday">Today</button>
         <button class="arrow" id="calPrev" aria-label="Previous month"><svg viewBox="0 0 12 12" fill="none"><path d="M7.5 2L3.5 6l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="arrow" id="calNext" aria-label="Next month"><svg viewBox="0 0 12 12" fill="none"><path d="M4.5 2l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -135,21 +139,6 @@ function renderMonth() {
   view.querySelector('#calToday').onclick = () => {
     calMonth = new Date(today().getFullYear(), today().getMonth(), 1); renderMonth();
   };
-  const sync = view.querySelector('#syncBills');
-  if (sync) sync.onclick = async () => {
-    sync.disabled = true; sync.textContent = 'Syncing…';
-    try {
-      const out = await callFunction('sync-bills');
-      await reload();
-      const n = out.created.length + out.updated.length;
-      toast(n ? `Synced ${n} bill${n === 1 ? '' : 's'} from ${out.from} onward`
-              : 'No manually-set recurring items found in Lunch Money');
-    } catch (err) {
-      sync.disabled = false; sync.textContent = 'Sync bills';
-      toast("Couldn't sync: " + err.message);
-    }
-  };
-
   view.querySelectorAll('[data-wk]').forEach(b => b.onclick = () => openWeek(pd(b.dataset.wk)));
   view.querySelectorAll('[data-day]').forEach(b => b.onclick = () => openDay(b.dataset.day));
 }
@@ -175,12 +164,12 @@ function renderWeek() {
     const d = add(start, i), k = key(d);
     const total = eventsOn(index, k).filter(e => e.type === 'bill').reduce((n, e) => n + e.amount, 0);
     const cls = ['day'];
-    if (i === 3) cls.push('pay');
+    if (payday(d)) cls.push('pay');
     if (k === todayKey) cls.push('today');
     strip += `<div class="${cls.join(' ')}">
       <div class="dow">${DW[i]}</div><div class="num">${d.getDate()}</div>
       <div class="amt${total ? '' : ' none'}">${total ? '$' + Math.round(total).toLocaleString() : '—'}</div>
-      ${i === 3 ? '<div class="pd">Payday</div>' : ''}</div>`;
+      ${payday(d) ? '<div class="pd">Payday</div>' : ''}</div>`;
   }
 
   const events = eventsBetween(index, start, end);
@@ -192,6 +181,7 @@ function renderWeek() {
       <h3>Week ${isoWeek(start)}</h3>
       <span class="rng">${MN[start.getMonth()]} ${start.getDate()} – ${start.getMonth() === end.getMonth() ? '' : MN[end.getMonth()] + ' '}${end.getDate()}</span>
       <div class="nav">
+        <button class="tbtn" id="wkNow">This week</button>
         <button class="arrow" id="wkPrev" aria-label="Previous week"><svg viewBox="0 0 12 12" fill="none"><path d="M7.5 2L3.5 6l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="arrow" id="wkNext" aria-label="Next week"><svg viewBox="0 0 12 12" fill="none"><path d="M4.5 2l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
@@ -207,21 +197,33 @@ function renderWeek() {
   setMastWord('WEEK ' + isoWeek(start));
 
   view.querySelector('#wkBack').onclick = () => renderMonth();
+  view.querySelector('#wkNow').onclick = () => { weekAnchor = mon(today()); renderWeek(); };
   view.querySelector('#wkPrev').onclick = () => { weekAnchor = add(weekAnchor, -7); renderWeek(); };
   view.querySelector('#wkNext').onclick = () => { weekAnchor = add(weekAnchor, 7); renderWeek(); };
   /* Ticking records "I looked at it", not "the charge posted". Autopay bills
      are never auto-ticked: a failed autopay is the case most worth seeing, and
      an auto-tick would hide exactly that. */
-  view.querySelectorAll('.tick').forEach(t => t.onclick = async () => {
+  /* Ticking records "I looked at it", not "the charge posted". Autopay bills
+     are never auto-ticked: a failed autopay is the case most worth seeing, and
+     an auto-tick would hide exactly that.
+
+     An occurrence has no row until something happens to it, so every tick is
+     an upsert rather than an update. */
+  view.querySelectorAll('.row .tick').forEach(t => t.onclick = async () => {
     const row = t.closest('.row');
-    const id = row.dataset.instance;
-    const nowPaid = !row.classList.contains('paid');
+    const nowDone = !row.classList.contains('paid');
     row.classList.toggle('paid');
     weekSummary();
+
+    const remind = row.dataset.remind;
+    const [billId, dueDate] = (remind || row.dataset.occ || '').split('|');
+    if (!billId) return;
+
     try {
-      await setBillPaid(id, nowPaid ? key(today()) : null);
-      const inst = data.billInstances.find(b => b.id === id);
-      if (inst) inst.paid_at = nowPaid ? key(today()) : null;
+      await touchOccurrence(billId, dueDate,
+        remind ? { reminder_done_at: nowDone ? key(today()) : null }
+               : { paid_at: nowDone ? key(today()) : null });
+      await reload();
     } catch (err) {
       row.classList.toggle('paid');
       weekSummary();
@@ -232,12 +234,11 @@ function renderWeek() {
   view.querySelectorAll('.row .v').forEach(input => {
     input.oninput = () => weekSummary();
     input.onchange = async () => {
-      const id = input.closest('.row').dataset.instance;
-      const amount = parseFloat(input.value) || 0;
+      const [billId, dueDate] = (input.closest('.row').dataset.occ || '').split('|');
+      if (!billId) return;
       try {
-        await setBillAmount(id, amount);
-        const inst = data.billInstances.find(b => b.id === id);
-        if (inst) inst.amount = amount;
+        await touchOccurrence(billId, dueDate, { amount: parseFloat(input.value) || 0 });
+        await reload();
       } catch (err) { toast("Couldn't save that: " + err.message); }
     };
   });
@@ -259,13 +260,22 @@ function rowHTML(e) {
 
   if (e.type === 'bill') {
     return `<div class="row${e.paid ? ' paid' : ''}${e.isLoan ? ' loanrow' : ''}"
-      data-instance="${e.ref.instance.id}"${e.isLoan ? ' data-goloan="1"' : ''}>
+      data-occ="${e.ref.bill.id}|${e.ref.occurrence.dateKey}"${e.isLoan ? ' data-goloan="1"' : ''}>
       <button class="tick" aria-label="Toggle paid"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6.2l2.6 2.6L10 3.4" stroke="#1a0f2b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       ${when}
       <div class="nm"><div class="n">${esc(e.label)}</div>
         <div class="t">${esc(e.sub)}${e.isLoan ? ' · click for the full picture' : ''}</div></div>
-      <span class="chip ${e.isLoan ? 'loan' : 'auto'}">${e.isLoan ? 'The loan' : 'Bill'}</span>
+      <span class="chip ${e.isLoan ? 'loan' : e.isAuto ? 'auto' : 'man'}">${e.isLoan ? 'The loan' : e.isAuto ? 'Autopay' : 'Bill'}</span>
       <input class="v" value="${e.amount.toFixed(2)}" aria-label="Amount"></div>`;
+  }
+
+  if (e.type === 'remind') {
+    return `<div class="row${e.done ? ' paid' : ''} remindrow"
+      data-remind="${e.ref.bill.id}|${e.ref.occurrence.dateKey}">
+      <button class="tick" aria-label="Mark this reminder done"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6.2l2.6 2.6L10 3.4" stroke="#1a0f2b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      ${when}
+      <div class="nm"><div class="n">${esc(e.label)}</div><div class="t">${esc(e.sub)}</div></div>
+      <span class="chip man">Before it fires</span><div style="width:98px"></div></div>`;
   }
 
   if (e.type === 'close') {
@@ -345,10 +355,11 @@ export function openDay(k) {
       </div>
       <button class="mclose" id="mX" aria-label="Close">×</button>
     </div>
-    ${isPayday(d) ? '<div class="paydaybar">Payday</div>' : ''}
+    ${payday(d) ? '<div class="paydaybar">Payday</div>' : ''}
     <div class="mbody">${rows || '<div class="mnone">Nothing scheduled this day.</div>'}${notesBlock(k)}</div>
     <div class="mfoot">
       <button class="go" id="mWeek">Open week ${isoWeek(d)}</button>
+      <button class="tbtn" id="mPayday">${payday(d) ? 'Not payday after all' : 'Payday moved here'}</button>
       ${billTotal ? `<span style="font-size:12px;color:var(--muted);align-self:center">${money(billTotal)} still due this day</span>` : ''}
     </div>`;
 
@@ -359,6 +370,20 @@ export function openDay(k) {
 
   document.getElementById('mX').onclick = closeDay;
   document.getElementById('mWeek').onclick = () => { closeDay(); openWeek(d); };
+
+  /* Payday is Thursday almost always. When a holiday moves it, one row says so
+     for that week only. */
+  document.getElementById('mPayday').onclick = async () => {
+    const existing = (data.paydayOverrides || []).find(o => o.on_date === k);
+    try {
+      if (existing) await clearPaydayOverride(existing.id);
+      else if (payday(d)) { toast('That is already this week\u2019s payday'); return; }
+      else await movePayday(k);
+      await reload();
+      openDay(k);
+      toast(existing ? 'Back to Thursday' : 'Payday moved to ' + fmtD(d));
+    } catch (err) { toast("Couldn't change that: " + err.message); }
+  };
   document.querySelectorAll('#modal [data-gostmt]').forEach(r => r.onclick = () => { closeDay(); goTab('stmt'); });
   document.querySelectorAll('#modal [data-unru]').forEach(b => b.onclick = async () => {
     try {

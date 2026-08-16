@@ -121,6 +121,8 @@ function formHTML() {
     <div class="ff">
       <div class="fld grow"><span class="label">Where did it go?</span>
         ${selectField('pbC', options, options[0][0], 'Where the purchase went')}</div>
+      <div class="fld grow" id="pbOtherWrap" hidden><span class="label">What was it, then?</span>
+        <input id="pbOther" type="text" autocomplete="off" placeholder="Affirm, a friend, the tab at work…"></div>
       <div class="fld"><span class="label">Bought on</span>
         ${dateField('pbOn', { value: key(today()), label: 'Date bought' })}</div>
       <div class="fld"><span class="label">Meant to clear by</span>
@@ -158,7 +160,7 @@ function cardHTML(d) {
   if (d.cleared) {
     return `<div class="pb cleared">
       <div class="top"><div class="d">${esc(p.description)}</div><div class="a mono">${money(d.amount)}</div></div>
-      <div class="l2">${d.offCard ? 'Owed since' : 'Put on'} ${fmtD(pd(p.incurred_on))} · cleared in full${
+      <div class="l2">${destinationOf(d)} · cleared in full${
         d.payments.length > 1 ? ' over ' + d.payments.length + ' payments' : ''}</div>
       <div class="prog"><i style="width:100%"></i></div>
       <div class="bot">
@@ -180,7 +182,7 @@ function cardHTML(d) {
       ${d.offCard ? '<span class="chip yours">Not a card</span>' : ''}
       <div class="a mono">${money(d.amount)}</div>
     </div>
-    <div class="l2">${d.offCard ? 'Owed since' : 'Put on'} ${fmtD(pd(p.incurred_on))} · meant to clear by ${fmtD(pd(p.intended_payback_on))}${
+    <div class="l2">${destinationOf(d)} · ${d.offCard ? 'owed since' : 'put on'} ${fmtD(pd(p.incurred_on))} · meant to clear by ${fmtD(pd(p.intended_payback_on))}${
       d.offCard ? ' · nothing closes on this, it just stays open'
                 : ` · statement closes ${d.certain ? '' : '~'}${fmtD(d.closeDate)}`}</div>
     <div class="prog"><i style="width:${d.pct}%"></i></div>
@@ -221,7 +223,17 @@ function goneHTML(bills) {
     </div>`).join('')}`;
 }
 
-const esc = s => String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+/* Which card it went on — or, off-card, whatever the user called it.
+ *
+ * The screen used to say only "Put on Aug 14", which in three weeks does not
+ * tell you which card is about to absorb it, and "Not a card" did not say
+ * whether that meant Affirm or a friend. */
+function destinationOf(d) {
+  if (!d.offCard) return d.card ? `${esc(d.card.name)} ···${d.card.last4}` : 'A card you no longer have';
+  return d.payback.off_card_label ? esc(d.payback.off_card_label) : 'Not a card';
+}
+
+const esc = s => String(s ?? '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
 /* ---------------------------------------------------------------- wiring */
 
@@ -229,6 +241,13 @@ function wire() {
   onSelectChange('pbC', value => {
     const note = host.querySelector('#pbNote');
     if (note) note.innerHTML = destinationNote(value);
+    /* The free-text field only exists for off-card, where nothing else records
+       what the thing actually was. */
+    const wrap = host.querySelector('#pbOtherWrap');
+    if (wrap) {
+      wrap.hidden = value !== 'other';
+      if (value === 'other') host.querySelector('#pbOther').focus();
+    }
   });
 
   const save = host.querySelector('#pbSave');
@@ -279,6 +298,7 @@ async function savePayback() {
     await createPayback({
       description, amount,
       cardId: dest === 'other' ? null : dest,
+      offCardLabel: dest === 'other' ? (host.querySelector('#pbOther')?.value.trim() || null) : null,
       incurredOn: dateValue('pbOn') || key(today()),
       intendedOn: dateValue('pbW') || key(add(today(), 7)),
     });

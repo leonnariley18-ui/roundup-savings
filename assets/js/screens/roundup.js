@@ -78,7 +78,8 @@ function render() {
         </div>
       </div>
     </div>
-    ${state.result ? breakdownHTML(state.result) : ''}`;
+    ${state.result ? breakdownHTML(state.result) : ''}
+    ${runsHTML()}`;
 
   wire();
 }
@@ -115,6 +116,22 @@ function breakdownHTML(r) {
     </div>`;
 }
 
+/* The tab's own memory. The calendar carries these as markers, but a marker
+ * answers "did I?" and this answers "over what?". */
+function runsHTML() {
+  if (!state.runs.length) return '';
+  return `<h2 class="sec">When you moved it</h2>
+    <div class="panel" style="padding:3px 2px">
+      ${state.runs.slice(0, 10).map(r => `<div class="lrow">
+        <span class="when">${fmtD(pd(r.ran_on))}</span>
+        <span class="card">Moved the round-up<span class="sub"> · ${
+          r.range_start && r.range_end
+            ? `swept ${fmtD(pd(r.range_start))} – ${fmtD(pd(r.range_end))}`
+            : 'range not recorded'}</span></span>
+      </div>`).join('')}
+    </div>`;
+}
+
 const esc = s => String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
 function wire() {
@@ -134,11 +151,16 @@ function wire() {
     const k = key(today());
     if (state.runs.some(r => r.ran_on === k)) { toast('Already marked for today'); return; }
     try {
-      const row = await addRoundupRun(k);
+      /* The range is what the marker means months later — without it the
+         calendar records that you moved money and nothing about which. */
+      const swept = state.result
+        ? [state.result.start, state.result.end]
+        : [dateValue('ruStart'), dateValue('ruEnd')];
+      const row = await addRoundupRun(k, swept[0], swept[1]);
       /* The date is already known, so it is set here rather than read back out
          of the response — the button's state should not depend on the shape of
          what the insert happened to return. */
-      state.runs.unshift({ ...(row || {}), ran_on: k });
+      state.runs.unshift({ ...(row || {}), ran_on: k, range_start: swept[0], range_end: swept[1] });
       render();
       onChanged();
       toast('Marked on the calendar for ' + fmtD(today()));

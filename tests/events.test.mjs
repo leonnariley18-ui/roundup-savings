@@ -35,7 +35,7 @@ const build = over => buildIndex(dataset(over), FROM, TO, TODAY);
 
 /* ---------------------------------------------------------------- ordering */
 
-test('within a day, events hold the bill/close/payback/target/roundup/note order', () => {
+test('within a day, events hold the bill/reminder/close/payback/target/roundup/note order', () => {
   /* Everything stacked on one date, deliberately supplied in reverse. */
   const day = '2026-08-20';
   const index = build({
@@ -47,8 +47,9 @@ test('within a day, events hold the bill/close/payback/target/roundup/note order
       { id: 'p2', description: 'deadline here', amount: 80, card_id: 'c1',
         incurred_on: '2026-08-01', intended_payback_on: '2026-09-29', moves: 0, dismissed: false },
     ],
-    bills: [{ id: 'b1', name: 'Rent', category: 'Housing' }],
-    billInstances: [{ id: 'bi1', bill_id: 'b1', due_date: day, amount: 1200, paid_at: null }],
+    bills: [{ id: 'b1', name: 'Rent', category: 'Housing', amount: 1200,
+              cadence: 'once', starts_on: day, ends_on: null }],
+    billInstances: [],
   });
 
   const types = eventsOn(index, day).map(e => e.type);
@@ -181,4 +182,74 @@ test('every event carries the same shape', () => {
     assert.ok(typeof e.colour === 'string' && e.colour.startsWith('var(--'));
     assert.ok('amount' in e && 'sub' in e && 'ref' in e);
   }
+});
+
+/* ---------------------------------------------------------------- bills */
+
+test('a bill puts each occurrence on the calendar without anything being stored', () => {
+  const index = build({
+    bills: [{ id: 'b1', name: 'Rent', category: 'Housing', amount: 1200,
+              cadence: 'monthly', starts_on: '2026-08-01', ends_on: null }],
+    billInstances: [],
+  });
+  const bills = eventsBetween(index, FROM, TO).filter(e => e.type === 'bill');
+  assert.deepEqual(bills.map(e => e.date), ['2026-08-01', '2026-09-01']);
+  assert.equal(bills[0].amount, 1200);
+  assert.equal(bills[0].paid, false);
+});
+
+test('a reminder lands before its bill and carries the bill in its subtitle', () => {
+  const index = build({
+    bills: [{ id: 'b1', name: 'Car insurance', amount: 210, cadence: 'monthly',
+              starts_on: '2026-08-20', ends_on: null, is_auto: true,
+              reminder_days_before: 3, reminder_text: 'Move funds to checking' }],
+    billInstances: [],
+  });
+  const list = eventsBetween(index, FROM, TO);
+  const remind = list.filter(e => e.type === 'remind');
+  assert.deepEqual(remind.map(e => e.date), ['2026-08-17', '2026-09-17']);
+  assert.equal(remind[0].label, 'Move funds to checking');
+  assert.match(remind[0].sub, /Car insurance/);
+  assert.equal(remind[0].done, false);
+});
+
+test('a reminder for a bill just past the window still appears', () => {
+  /* The reminder is inside the range even though its bill is not, so the
+     occurrence scan has to reach past `to` and filter afterwards. */
+  const index = buildIndex(dataset({
+    bills: [{ id: 'b1', name: 'Rent', amount: 1200, cadence: 'monthly',
+              starts_on: '2026-09-03', ends_on: null, reminder_days_before: 5 }],
+  }), pd('2026-08-01'), pd('2026-08-31'), TODAY);
+  const remind = eventsBetween(index, pd('2026-08-01'), pd('2026-08-31'))
+    .filter(e => e.type === 'remind');
+  assert.deepEqual(remind.map(e => e.date), ['2026-08-29']);
+});
+
+test('a ticked occurrence reads as paid, and an edited one keeps its figure', () => {
+  const index = build({
+    bills: [{ id: 'b1', name: 'Rent', amount: 1200, cadence: 'monthly',
+              starts_on: '2026-08-01', ends_on: null }],
+    billInstances: [{ id: 'i1', bill_id: 'b1', due_date: '2026-09-01',
+                      amount: 1250, paid_at: '2026-09-01', reminder_done_at: null }],
+  });
+  const bills = eventsBetween(index, FROM, TO).filter(e => e.type === 'bill');
+  const sept = bills.find(e => e.date === '2026-09-01');
+  assert.equal(sept.amount, 1250);
+  assert.equal(sept.paid, true);
+});
+
+test('an ended bill stops appearing, and takes its reminders with it', () => {
+  const index = build({
+    bills: [{ id: 'b1', name: 'Gym', amount: 40, cadence: 'monthly',
+              starts_on: '2026-08-05', ends_on: '2026-08-05',
+              reminder_days_before: 2 }],
+    billInstances: [],
+  });
+  const mine = eventsBetween(index, FROM, TO).filter(e => e.ref.bill);
+  assert.deepEqual(mine.map(e => `${e.date}:${e.type}`), ['2026-08-03:remind', '2026-08-05:bill']);
+});
+
+test('a bill with no start date is skipped rather than throwing', () => {
+  const index = build({ bills: [{ id: 'b1', name: 'Broken', amount: 10 }], billInstances: [] });
+  assert.deepEqual(eventsBetween(index, FROM, TO).filter(e => e.type === 'bill'), []);
 });

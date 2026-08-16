@@ -21,6 +21,7 @@ import * as paybacks from './screens/paybacks.js';
 import * as calendar from './screens/calendar.js';
 import * as loan from './screens/loan.js';
 import * as roundup from './screens/roundup.js';
+import * as bills from './screens/bills.js';
 
 
 
@@ -70,10 +71,12 @@ async function main() {
       calendar.mount(document.getElementById('t-cal')),
       loan.load(),
       roundup.mount(document.getElementById('t-ru')),
+      bills.mount(document.getElementById('t-bills')),
     ]);
     mounted.filter(m => m.status === 'rejected')
            .forEach(m => console.warn('screen failed to load:', m.reason));
     roundup.setChangeHandler(() => calendar.reload().catch(() => {}));
+    bills.setChangeHandler(() => calendar.reload().catch(() => {}));
     /* The loan is a modal with two entry points — the drawer and the week
        view's loan row — so it is registered as a renderer rather than mounted
        into a tab. */

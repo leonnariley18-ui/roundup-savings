@@ -649,3 +649,15 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .linkrow:last-child{border-bottom:0}
 .linkrow .lk{flex:0 0 210px;min-width:180px}
 .linkrow .selwrap{flex:1;min-width:260px}
+
+/* ---------- bills ---------- */
+.billrow{display:flex;align-items:center;gap:18px;padding:14px 0;border-bottom:1px solid var(--soft);flex-wrap:wrap}
+.billrow.ended{opacity:.45}
+.billrow .bn{flex:1;min-width:220px}
+.billrow .bn .n{font-family:var(--serif);font-size:21px;line-height:1.15}
+.billrow .bn .t{font-size:11px;color:var(--faint);margin-top:2px}
+.billrow .bn .t.rem{color:var(--warn);margin-top:4px}
+.billrow .bw{flex:0 0 auto;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.billrow .ba{font-size:17px;font-variant-numeric:tabular-nums;min-width:96px;text-align:right}
+.billrow .bx{display:flex;gap:7px}
+.row.remindrow .n{font-family:var(--sans);font-size:14px;line-height:1.5}

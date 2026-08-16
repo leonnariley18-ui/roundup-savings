@@ -130,10 +130,11 @@ export async function loadPaybacks() {
   return { paybacks, paymentsByPayback };
 }
 
-export async function createPayback({ description, amount, cardId, incurredOn, intendedOn }) {
+export async function createPayback({ description, amount, cardId, incurredOn, intendedOn, offCardLabel }) {
   const rows = await run(getDb().from('paybacks').insert({
     description, amount,
     card_id: cardId || null,          // null = off-card, and it stays that way
+    off_card_label: cardId ? null : (offCardLabel || null),
     incurred_on: incurredOn,
     intended_payback_on: intendedOn,
   }).select());
@@ -202,9 +203,12 @@ export async function removeNote(id) {
 export const loadRoundupRuns = () =>
   run(getDb().from('roundup_runs').select('*').order('ran_on', { ascending: false }));
 
-export async function addRoundupRun(ranOn) {
-  const rows = await run(getDb().from('roundup_runs').insert({ ran_on: ranOn }).select());
-  await logEvent('roundup_run', { ran_on: ranOn });
+/* Still no amount — that lives in the bank. But which range was swept is a
+ * fact about what you did, and without it a marker months later says nothing. */
+export async function addRoundupRun(ranOn, rangeStart = null, rangeEnd = null) {
+  const rows = await run(getDb().from('roundup_runs')
+    .insert({ ran_on: ranOn, range_start: rangeStart, range_end: rangeEnd }).select());
+  await logEvent('roundup_run', { ran_on: ranOn, range_start: rangeStart, range_end: rangeEnd });
   return rows[0];
 }
 
@@ -297,4 +301,56 @@ export async function setBillAmount(instanceId, amount) {
 export async function setCardLink(cardId, accountId) {
   await run(getDb().from('cards')
     .update({ lunchmoney_account_id: accountId }).eq('id', cardId));
+}
+
+/* ---------------------------------------------------------------- bills (manual) */
+
+/* Definitions only. Occurrences are derived from these on read — see bills.js. */
+export async function saveBill(bill) {
+  const row = {
+    name: bill.name, category: bill.category || null,
+    amount: bill.amount, cadence: bill.cadence,
+    starts_on: bill.starts_on, ends_on: bill.ends_on || null,
+    is_auto: !!bill.is_auto,
+    reminder_days_before: bill.reminder_days_before || null,
+    reminder_text: bill.reminder_text || null,
+    notes: bill.notes || null,
+    active: true,
+  };
+  if (bill.id) {
+    await run(getDb().from('bills').update(row).eq('id', bill.id));
+    return { ...row, id: bill.id };
+  }
+  const rows = await run(getDb().from('bills').insert(row).select());
+  return rows[0];
+}
+
+/* Deactivated rather than deleted, so instances already ticked keep meaning. */
+export async function archiveBill(id) {
+  await run(getDb().from('bills').update({ active: false }).eq('id', id));
+}
+
+/* An occurrence has no row until something happens to it, so every write here
+ * is an upsert on (bill_id, due_date) rather than an update. */
+export async function touchOccurrence(billId, dueDate, patch) {
+  const rows = await run(getDb().from('bill_instances')
+    .upsert({ bill_id: billId, due_date: dueDate, ...patch }, { onConflict: 'bill_id,due_date' })
+    .select());
+  if (patch.paid_at) await logEvent('bill_paid', { bill_id: billId, due_date: dueDate });
+  return rows[0];
+}
+
+/* ---------------------------------------------------------------- payday */
+
+export const loadPaydayOverrides = () =>
+  run(getDb().from('payday_overrides').select('*'));
+
+export async function movePayday(onDate) {
+  const rows = await run(getDb().from('payday_overrides')
+    .upsert({ on_date: onDate }, { onConflict: 'user_id,on_date' }).select());
+  return rows[0];
+}
+
+export async function clearPaydayOverride(id) {
+  await run(getDb().from('payday_overrides').delete().eq('id', id));
 }
