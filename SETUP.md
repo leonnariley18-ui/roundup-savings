@@ -66,6 +66,53 @@ table. Different schema, no overlap.
 Only the first two lose data, and both are deliberate acts rather than
 something you drift into. Everything else is a broken connection you can undo.
 
+### The other app's requirements
+
+This project (`pukzhmhevjbfwvhjzppr`) also runs **cLOUD** (`the-cloud-V2`), which
+is in daily use. It authenticates unusually and its constraints are recorded
+here so they are not rediscovered by breaking them.
+
+cLOUD has **no login and no session**. It uses the publishable key plus a
+hardcoded `user_id`, reads and writes one row of `public.cloud_data`, and
+depends entirely on an RLS policy `"anon can access own row"` — PERMISSIVE,
+`TO anon`, `FOR ALL`. Do not "fix" any of that.
+
+Do not, without checking first:
+
+1. **Rotate or disable API keys**, including migrating key generations. Enabling
+   the new key system revoked the legacy JWT key and took cLOUD offline once.
+2. **Touch `public.cloud_data`** — the table, its RLS, or that policy.
+3. **Add RESTRICTIVE policies.** They AND with permissive ones, so a broad
+   restrictive policy silently blocks anon everywhere. Ledger's are all
+   permissive and scoped to `ledger.*`.
+4. **Remove `public` from Exposed schemas.** It must stay.
+5. **Create a table named `cloud_data`** in any schema — it would shadow the
+   real one in PostgREST.
+
+Ledger complies with all of it: nothing outside `ledger` is referenced, `anon`
+is never granted anything, and no table name collides with `app_data`,
+`cloud_data`, `cloud_data_backup_*` or `users`.
+
+**Two apps, one origin.** Both are served from `leonnariley18-ui.github.io`, so
+they share `localStorage`. supabase-js keys its stored session on the project
+ref alone, which means both would use one slot and signing into one would
+overwrite the other's session — and an app that picks up a foreign session
+sends authenticated requests, which a `TO anon` policy refuses. That is not
+hypothetical; it blanked cLOUD once. Ledger therefore sets an explicit
+`storageKey` in `assets/js/db.js`. Leave it set.
+
+**After any auth, API or RLS change, confirm cLOUD still reads:**
+
+```sql
+begin;
+  set local role anon;
+  select count(*) from public.cloud_data
+  where user_id = 'dba87fdb-af33-4f2f-94a6-6ee8e6a5c104'::uuid;
+rollback;
+```
+
+Expect `1`. A `0` means something took anon's access away.
+
 **Worth doing given you keep backup tables around:** Ledger's data is small, so
 export it occasionally. In the SQL editor, run a `select *` against any
 `ledger.` table and use the download button, or ask a database client for
