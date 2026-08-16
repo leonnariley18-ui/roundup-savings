@@ -7,7 +7,7 @@
 
 import { initDb, dbStatus } from './db.js';
 import { currentSession, showGate, signOut } from './auth.js';
-import { initShell } from './shell.js';
+import { initShell, setLoanRenderer } from './shell.js';
 
 /* Loaded for their global click handlers, which is what makes every field
    rendered anywhere in the app live without per-screen wiring. */
@@ -19,6 +19,7 @@ import * as whichCard from './screens/whichcard.js';
 import * as statements from './screens/statements.js';
 import * as paybacks from './screens/paybacks.js';
 import * as calendar from './screens/calendar.js';
+import * as loan from './screens/loan.js';
 
 const PLACEHOLDERS = {
   'ru': {
@@ -83,7 +84,12 @@ async function main() {
       statements.mount(document.getElementById('t-stmt')),
       paybacks.mount(document.getElementById('t-pb')),
       calendar.mount(document.getElementById('t-cal')),
+      loan.load(),
     ]);
+    /* The loan is a modal with two entry points — the drawer and the week
+       view's loan row — so it is registered as a renderer rather than mounted
+       into a tab. */
+    setLoanRenderer(el => loan.render(el));
     /* Paybacks and Statements both change what the calendar draws, so both
        tell it to refetch rather than letting the grid go stale. */
     paybacks.setChangeHandler(() => calendar.reload().catch(() => {}));

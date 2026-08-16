@@ -95,16 +95,12 @@ export function closeDrawer() {
 /* A modal, not a page. The prototype read its content out of a hidden section;
  * here it is one component the modal mounts — which is what lets the week
  * view's loan row open the same thing without duplicating any of it. */
-let loanContent = () => `<div class="soon">
-    <div class="t">Not built yet</div>
-    <div class="b">Every figure here derives from logged payments — balance, payoff
-      projection, interest avoided, months erased, the principal and interest split.
-      None of it is hardcoded, so there is nothing honest to show until the table
-      exists. The first payment posts September 5, 2026.</div>
-    <div class="step">Build order · step 9</div>
-  </div>`;
+/* The loan is one component the modal mounts, rather than content the modal
+   owns — which is what lets the drawer and the week view's loan row open the
+   same thing without duplicating any of it. */
+let loanRenderer = el => { el.innerHTML = '<div class="soon"><div class="t">Not built yet</div></div>'; };
 
-export function setLoanContent(fn) { loanContent = fn; }
+export function setLoanRenderer(fn) { loanRenderer = fn; }
 
 export function openLoan() {
   document.getElementById('loanModal').innerHTML = `
@@ -115,9 +111,10 @@ export function openLoan() {
       </div>
       <button class="mclose" id="loanX" aria-label="Close">&times;</button>
     </div>
-    <div class="lbody">${loanContent()}</div>`;
+    <div class="lbody" id="loanBody"></div>`;
   document.getElementById('loanScrim').hidden = false;
   document.getElementById('loanX').onclick = closeLoan;
+  loanRenderer(document.getElementById('loanBody'));
 }
 
 export function closeLoan() {

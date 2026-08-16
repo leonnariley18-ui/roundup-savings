@@ -213,3 +213,37 @@ export async function loadBills() {
   ]);
   return { bills, billInstances: instances };
 }
+
+/* ---------------------------------------------------------------- the loan */
+
+export async function loadLoan() {
+  const db = getDb();
+  const [debts, payments] = await Promise.all([
+    run(db.from('debts').select('*').eq('status', 'active')),
+    run(db.from('debt_payments').select('*').order('paid_at', { ascending: true })),
+  ]);
+  const debt = debts[0] || null;
+  return { debt, payments: debt ? payments.filter(p => p.debt_id === debt.id) : [] };
+}
+
+/* Both portions are stored on the row rather than recomputed later, so history
+ * stays accurate if the rate ever changes. `source` distinguishes manual from
+ * a future Lunch Money matcher, which can become a second writer with no
+ * schema change. */
+export async function logDebtPayment({ debtId, amount, paidAt, principal, interest }) {
+  const rows = await run(getDb().from('debt_payments').insert({
+    debt_id: debtId, amount, paid_at: paidAt,
+    principal_portion: principal, interest_portion: interest,
+    source: 'manual',
+  }).select());
+  await logEvent('loan_payment_posted', { debt_id: debtId, amount, paid_at: paidAt });
+  return rows[0];
+}
+
+export async function removeDebtPayment(id) {
+  await run(getDb().from('debt_payments').delete().eq('id', id));
+}
+
+export async function setDebtBalance(debtId, balance) {
+  await run(getDb().from('debts').update({ current_balance: balance }).eq('id', debtId));
+}
