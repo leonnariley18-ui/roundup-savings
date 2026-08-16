@@ -22,5 +22,21 @@ export const POINT_CENTS = 1.0;
 /* Consistent closes needed before a card's date counts as confirmed. */
 export const NEEDED = 3;
 
+/* The date this app starts caring about.
+ *
+ * Only bills need this. Everything else here — statement closes, paybacks,
+ * notes, round-up runs, card decisions, loan payments — starts empty and only
+ * ever holds what you logged, so there is no history to inherit. Round-up asks
+ * for its own date range each run.
+ *
+ * Bills are the exception because they sync from Lunch Money recurring items,
+ * which carry history back to whenever the account started. Without a floor,
+ * the first sync would manufacture months of bill instances that were paid long
+ * ago and mark the calendar with them. Nothing before this date is generated.
+ *
+ * Changing it later is safe: it only gates what sync creates, and it never
+ * deletes an instance that already exists. */
+export const BILLS_FROM = '2026-08-01';
+
 export const isConfigured = () =>
   SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;

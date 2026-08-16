@@ -13,6 +13,10 @@ import { initShell } from './shell.js';
    rendered anywhere in the app live without per-screen wiring. */
 import './ui/datepicker.js';
 import './ui/select.js';
+import './help.js';
+
+import * as whichCard from './screens/whichcard.js';
+import * as statements from './screens/statements.js';
 
 const PLACEHOLDERS = {
   'cal': {
@@ -30,26 +34,12 @@ const PLACEHOLDERS = {
         else — the amount lives in your bank, not here.`,
     step: 'step 7',
   },
-  'cards': {
-    t: 'Which card',
-    b: `A pre-purchase decision tool. First screen to be built: it needs no Lunch
-        Money data, it is the highest-value tab, and it shares its statement
-        prediction with Statements — one function, both consumers.`,
-    step: 'step 3 · next',
-  },
   'pb': {
     t: 'Paybacks',
     b: `Tracks putting something on a card meaning to clear it in days, forgetting,
         and having it quietly become a bill. The countdown runs to statement close,
         not to the payment due date.`,
     step: 'step 4',
-  },
-  'stmt': {
-    t: 'Statements',
-    b: `Calibration and close-date logging. Built alongside Which card, because both
-        read the same prediction from the same observations. Nothing is seeded here —
-        every date in it will be one you logged.`,
-    step: 'step 3 · next',
   },
 };
 
@@ -91,6 +81,17 @@ async function main() {
 
   renderConnectionBanner();
   renderPlaceholders();
+
+  /* The two built screens. They share the same card and statement_closes rows,
+     so logging a close in one has to refresh the other — otherwise Which card
+     would keep ranking on a prediction that Statements has already replaced. */
+  if (dbStatus().ok && session) {
+    statements.setChangeHandler(() => whichCard.refresh().catch(() => {}));
+    await Promise.all([
+      whichCard.mount(document.getElementById('t-cards')),
+      statements.mount(document.getElementById('t-stmt')),
+    ]);
+  }
 
   const out = document.getElementById('signOut');
   if (out) {
