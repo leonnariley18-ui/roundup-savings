@@ -640,3 +640,5 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .balin:hover,.balin:focus-within{border-bottom-color:var(--accent)}
 .cs.balage{color:var(--faint);margin-top:2px}
 .cs.balage.warn{color:var(--warn)}
+/* a synced balance is not yours to type over */
+.ballocked{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}

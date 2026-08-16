@@ -217,10 +217,7 @@ function rowHTML(r, best) {
     <td class="mono">${tilde}Closes ${fmtD(r.close)}
       <div class="cs">Due ${fmtD(r.due)}</div>
       ${r.why ? `<div class="cs" style="color:var(--warn)">${r.why}</div>` : ''}</td>
-    <td class="mono">
-      <span class="balin"><span>$</span><input type="number" min="0" step="0.01"
-        value="${Number(r.card.current_balance).toFixed(2)}"
-        data-bal="${r.card.id}" aria-label="Balance on ${r.card.name}"></span>
+    <td class="mono">${balanceCell(r.card)}
       <div class="cs">${r.util.toFixed(0)}% of $${limit.toLocaleString()}</div>
       <div class="cs ${ageClass(r.card)}">${ageLine(r.card)}</div></td>
     <td class="mono">${r.card.apr == null
@@ -236,15 +233,44 @@ function rowHTML(r, best) {
  * a day or two of lag is irrelevant to a rule whose threshold is "any balance
  * at all", but pretending it is live would not be. */
 function syncedLine(cards) {
+  const linked = cards.filter(isLinked).length;
   const seeded = cards.filter(c => (c.balance_source || 'seed') === 'seed').length;
-  if (seeded === cards.length) {
-    return 'No balance has been checked yet — these are the figures from setup';
+  const stale = cards.filter(c =>
+    (c.balance_source === 'manual' && (daysOld(c) ?? 0) > 7) || isStuck(c)).length;
+
+  if (!linked && seeded === cards.length) {
+    return 'No card is linked to Lunch Money — set these yourself';
   }
-  const stale = cards.filter(c => daysOld(c) != null && daysOld(c) > 7).length;
   const parts = [];
+  if (linked) parts.push(`${linked} synced`);
+  if (cards.length - linked) parts.push(`${cards.length - linked} you keep yourself`);
   if (seeded) parts.push(`${seeded} never checked`);
-  if (stale) parts.push(`${stale} over a week old`);
-  return parts.length ? `Balances: ${parts.join(' · ')}` : 'Balances are current';
+  if (stale) parts.push(`${stale} going stale`);
+  return 'Balances: ' + parts.join(' · ');
+}
+
+/* A card that a sync has matched is linked to Lunch Money; one that never
+ * matched is not. Nothing has to be configured — the sync's own result is the
+ * answer, and it stays right on its own as cards are linked or unlinked.
+ *
+ * Linked balances are read-only. Typing over one would be overwritten by the
+ * next sync, so offering the field at all would be a lie about what sticks. */
+const isLinked = card => (card.balance_source || 'seed') === 'lunchmoney';
+
+/* Except when a linked card has gone quiet. If Lunch Money stops matching it —
+ * the account was unlinked, or the last four digits changed — the figure would
+ * otherwise be frozen and uneditable forever. After a fortnight the field comes
+ * back rather than leaving a stale number no one can correct. */
+const STALE_DAYS = 14;
+const isStuck = card => isLinked(card) && (daysOld(card) ?? 0) > STALE_DAYS;
+
+function balanceCell(card) {
+  if (isLinked(card) && !isStuck(card)) {
+    return `<span class="ballocked">${money(card.current_balance)}</span>`;
+  }
+  return `<span class="balin"><span>$</span><input type="number" min="0" step="0.01"
+    value="${Number(card.current_balance).toFixed(2)}"
+    data-bal="${card.id}" aria-label="Balance on ${card.name}"></span>`;
 }
 
 /* How long ago this balance was last established, in days. */
@@ -260,19 +286,23 @@ function daysOld(card) {
  * The seeded figures say so outright rather than looking like fact. */
 function ageLine(card) {
   const source = card.balance_source || 'seed';
-  if (source === 'seed') return 'from setup — never checked';
+  if (source === 'seed') return 'not linked — set this yourself';
   const days = daysOld(card);
   const how = source === 'lunchmoney' ? 'synced' : 'you set this';
-  if (days === 0) return `${how} today`;
-  if (days === 1) return `${how} yesterday`;
-  return `${how} ${days} days ago`;
+  const when = days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+  if (isStuck(card)) return `last synced ${when} — no longer matching, set it yourself`;
+  return `${how} ${when}`;
 }
 
 function ageClass(card) {
   const source = card.balance_source || 'seed';
   if (source === 'seed') return 'balage warn';
+  if (isStuck(card)) return 'balage warn';
+  /* A synced figure is not stale at a week — it refreshes itself. A typed one
+     is only as good as the day it was typed. */
   const days = daysOld(card);
-  return days != null && days > 7 ? 'balage warn' : 'balage';
+  if (source === 'manual' && days != null && days > 7) return 'balage warn';
+  return 'balage';
 }
 
 function bofaCard() {
