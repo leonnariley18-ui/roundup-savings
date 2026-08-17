@@ -330,6 +330,17 @@ export async function archiveBill(id) {
   await run(getDb().from('bills').update({ active: false }).eq('id', id));
 }
 
+/* At most one bill is ever "the loan" — pass the debt's id to link a bill to
+ * it (clearing whichever bill held it before), or null to unlink. */
+export async function setBillLoanLink(billId, debtId) {
+  const db = getDb();
+  if (debtId) {
+    await run(db.from('bills').update({ links_to_debt_id: null })
+      .eq('links_to_debt_id', debtId).neq('id', billId));
+  }
+  await run(db.from('bills').update({ links_to_debt_id: debtId }).eq('id', billId));
+}
+
 /* An occurrence has no row until something happens to it, so every write here
  * is an upsert on (bill_id, due_date) rather than an update. */
 export async function touchOccurrence(billId, dueDate, patch) {

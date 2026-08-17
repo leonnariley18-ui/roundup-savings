@@ -12,13 +12,13 @@
 
 import { today, add, key, pd, fmtD, money, MFULL } from '../dates.js';
 import { CADENCES, cadenceLabel, occurrences } from '../bills.js';
-import { loadBills, saveBill, archiveBill } from '../data.js';
+import { loadBills, saveBill, archiveBill, loadLoan, setBillLoanLink } from '../data.js';
 import { dateField, dateValue, setDate } from '../ui/datepicker.js';
 import { selectField, selectValue, onSelectChange } from '../ui/select.js';
 import { toast } from '../ui/toast.js';
 
 let host = null;
-let data = { bills: [], billInstances: [] };
+let data = { bills: [], billInstances: [], debtId: null };
 let editing = null;          // null = form closed; {} = new; a bill = editing it
 let onChanged = () => {};
 
@@ -27,8 +27,7 @@ export function setChangeHandler(fn) { onChanged = fn; }
 export async function mount(el) {
   host = el;
   try {
-    data = await loadBills();
-    render();
+    await reload();
   } catch (err) {
     host.innerHTML = `<div class="soon"><div class="t">Couldn't load your bills</div>
       <div class="b">${esc(err.message)}</div></div>`;
@@ -36,7 +35,8 @@ export async function mount(el) {
 }
 
 export async function reload() {
-  data = await loadBills();
+  const [bills, loan] = await Promise.all([loadBills(), loadLoan().catch(() => ({ debt: null }))]);
+  data = { ...bills, debtId: loan.debt ? loan.debt.id : null };
   render();
 }
 
@@ -113,10 +113,20 @@ function rowHTML(b) {
     </div>
     <div class="ba mono">${money(b.amount)}</div>
     <div class="bx">
+      ${loanToggleHTML(b)}
       <button class="tbtn" data-edit="${b.id}">Edit</button>
       <button class="tbtn" data-archive="${b.id}">Remove</button>
     </div>
   </div>`;
+}
+
+/* At most one bill is ever the loan — calendar and week view style it
+   differently and open the loan modal on click, so it needs marking. */
+function loanToggleHTML(b) {
+  if (!data.debtId) return '';
+  return b.links_to_debt_id === data.debtId
+    ? `<button class="tbtn" data-unlink-loan="${b.id}">This is the loan ✓</button>`
+    : `<button class="tbtn" data-link-loan="${b.id}">Mark as the loan</button>`;
 }
 
 function formHTML() {
@@ -195,6 +205,24 @@ function wire() {
       onChanged();
       toast(`Removed ${bill.name}`);
     } catch (err) { toast("Couldn't remove that: " + err.message); }
+  });
+
+  host.querySelectorAll('[data-link-loan]').forEach(b => b.onclick = async () => {
+    try {
+      await setBillLoanLink(b.dataset.linkLoan, data.debtId);
+      await reload();
+      onChanged();
+      toast('Linked to the loan');
+    } catch (err) { toast("Couldn't link that: " + err.message); }
+  });
+
+  host.querySelectorAll('[data-unlink-loan]').forEach(b => b.onclick = async () => {
+    try {
+      await setBillLoanLink(b.dataset.unlinkLoan, null);
+      await reload();
+      onChanged();
+      toast('Unlinked from the loan');
+    } catch (err) { toast("Couldn't unlink that: " + err.message); }
   });
 
   const save = host.querySelector('#bSave');
