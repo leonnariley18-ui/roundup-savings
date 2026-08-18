@@ -19,6 +19,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .brand{position:absolute;left:-6px;bottom:12px;display:flex;align-items:center;gap:13px;background:transparent;border:0;color:var(--text);cursor:pointer;font-family:var(--serif);font-size:clamp(40px,4.4vw,64px);line-height:1;padding:4px 6px}
 .brand .mark{font-size:.62em;line-height:1;filter:saturate(.9);flex-shrink:0}
 .brand:hover{color:var(--accent)}
+.syncdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:10px;vertical-align:middle;background:var(--alert)}
+.syncdot.ok{background:var(--save)}
 .brand:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .brand .bars{display:flex;flex-direction:column;gap:4px;width:21px;flex-shrink:0}
 .brand .bars i{display:block;height:1.5px;background:currentColor}

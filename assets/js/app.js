@@ -26,9 +26,16 @@ import * as bills from './screens/bills.js';
 
 
 function renderConnectionBanner() {
+  const { ok, reason } = dbStatus();
+
+  const dot = document.getElementById('syncDot');
+  if (dot) {
+    dot.classList.toggle('ok', ok);
+    dot.title = ok ? 'Connected' : reason === 'unconfigured' ? 'Not connected — unconfigured' : 'Not connected — unreachable';
+  }
+
   const el = document.getElementById('conn');
   if (!el) return;
-  const { ok, reason } = dbStatus();
   if (ok) { el.hidden = true; return; }
   el.hidden = false;
   el.innerHTML = reason === 'unconfigured'
@@ -96,3 +103,11 @@ async function main() {
 }
 
 main();
+
+/* Registered mainly so Chrome/ChromeOS treat this as an installable PWA —
+ * see sw.js for what it actually caches (the static shell only). */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('service worker not registered:', err.message));
+  });
+}
