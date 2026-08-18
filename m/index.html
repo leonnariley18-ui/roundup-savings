@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="color-scheme" content="dark">
+<title>Ledger</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>%F0%9F%93%97</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500&family=Montserrat:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/app.css">
+<link rel="stylesheet" href="assets/css/mobile.css">
+</head>
+<body>
+
+<!-- Nothing renders until there is a session to scope it to — same gate markup
+     auth.js already knows how to fill in. -->
+<div class="gate" id="gate" hidden></div>
+
+<div id="appWrap" hidden>
+  <div id="shell">
+    <div id="screens">
+
+      <div class="mscreen active" id="s-week"></div>
+      <div class="mscreen" id="s-cal"></div>
+      <div class="mscreen" id="s-bills"></div>
+      <div class="mscreen" id="s-pb"></div>
+      <div class="mscreen" id="s-wc"></div>
+
+    </div>
+
+    <div id="mnav">
+      <button class="ni on" data-s="week"><div class="ico">📅</div><div>Week</div><div class="pip"></div></button>
+      <button class="ni" data-s="cal"><div class="ico">📆</div><div>Month</div><div class="pip"></div></button>
+      <button class="ni" data-s="bills"><div class="ico">📄</div><div>Bills</div><div class="pip"></div></button>
+      <button class="ni" data-s="pb"><div class="ico">🔁</div><div>Pay back</div><div class="pip"></div></button>
+      <button class="ni" data-s="wc"><div class="ico">💳</div><div>Card</div><div class="pip"></div></button>
+    </div>
+  </div>
+
+  <div id="msheet-scrim"></div>
+  <div id="mday-sheet">
+    <div class="msheet-handle"></div>
+    <div class="msheet-head">
+      <div class="msheet-daynum" id="msh-num">11</div>
+      <div class="msheet-meta">
+        <div class="msh-dow" id="msh-dow">TUESDAY</div>
+        <div class="msh-full" id="msh-full">August 11, 2026</div>
+      </div>
+      <button class="msheet-close" id="msh-close" aria-label="Close">×</button>
+    </div>
+    <div class="msheet-body" id="msh-body"></div>
+  </div>
+  <div id="mtoast"></div>
+</div>
+
+<script type="module" src="assets/js/main.js"></script>
+</body>
+</html>
