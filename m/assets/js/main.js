@@ -16,8 +16,17 @@ import * as bills from './screens/bills.js';
 import * as paybacks from './screens/paybacks.js';
 import * as whichcard from './screens/whichcard.js';
 
+function paintSyncDot() {
+  const { ok, reason } = dbStatus();
+  const dot = document.getElementById('mSyncDot');
+  if (!dot) return;
+  dot.classList.toggle('ok', ok);
+  dot.title = ok ? 'Connected' : reason === 'unconfigured' ? 'Not connected — unconfigured' : 'Not connected — unreachable';
+}
+
 async function main() {
   await initDb();
+  paintSyncDot();
 
   let session = await currentSession();
   if (dbStatus().ok && !session) session = await showGate();
