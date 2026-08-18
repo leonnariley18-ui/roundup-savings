@@ -103,3 +103,11 @@ async function main() {
 }
 
 main();
+
+/* Registered mainly so Chrome/ChromeOS treat this as an installable PWA —
+ * see sw.js for what it actually caches (the static shell only). */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('service worker not registered:', err.message));
+  });
+}
