@@ -48,3 +48,11 @@ async function main() {
 }
 
 main().catch(err => console.error('mobile bootstrap failed:', err));
+
+/* Registered mainly so Chrome/Android treat this as an installable PWA —
+ * see sw.js for what it actually caches (the static shell only). */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('service worker not registered:', err.message));
+  });
+}
