@@ -2,6 +2,7 @@
 
 import { today, add, key, pd, fmtD, money } from '../../../../assets/js/dates.js';
 import { derive, summarise, clampPayment } from '../../../../assets/js/paybacks.js';
+import { calc } from '../../../../assets/js/statements.js';
 import { createPayback, addPayment, removeLastPayment, setPaybackStatus, logEvent } from '../../../../assets/js/data.js';
 import { state } from '../state.js';
 import { refetchAndRepaint } from '../shell.js';
@@ -10,6 +11,8 @@ import { toast } from '../toast.js';
 let host = null;
 let formOpen = false;
 let expanded = new Set();
+let formDest = null;
+let formVals = { desc: '', amt: '', other: '', on: key(today()), want: key(add(today(), 7)) };
 
 export async function mount(el) {
   host = el;
@@ -56,19 +59,55 @@ export function render() {
       <span>Log a payback</span>
       <span class="collapse-ico${formOpen ? ' open' : ''}">${formOpen ? '×' : '＋'}</span>
     </button>
-    <div class="pb-form${formOpen ? ' open' : ''}">
-      <div class="frow"><div class="lbl">What was it?</div><input id="pbDesc" type="text" autocomplete="off"></div>
-      <div class="frow-2">
-        <div class="frow" style="margin-bottom:0"><div class="lbl">Amount</div><input id="pbAmt" type="number" inputmode="decimal" min="0" step="1"></div>
-        <div class="frow" style="margin-bottom:0"><div class="lbl">Card / other</div><input id="pbCard" type="text" autocomplete="off" placeholder="leave blank if not a card"></div>
-      </div>
-      <button class="pb-btn" id="pbLog">Log it</button>
-    </div>
+    <div class="pb-form${formOpen ? ' open' : ''}">${formHTML()}</div>
     <div class="pb-scroll">
       ${live.length ? live.map(cardHTML).join('') : '<div class="msoon"><div class="t">Nothing fronted right now.</div></div>'}
     </div>`;
 
   wire();
+}
+
+/* Same fields as desktop's screens/paybacks.js formHTML() — description,
+ * amount, a real card/other destination (not free text), the live
+ * days-to-close note under it, and both dates. Native select/date inputs
+ * stand in for desktop's custom dpbtn/selbtn widgets — same fields and
+ * behavior, mobile-appropriate controls. */
+function formHTML() {
+  const options = [
+    ...(state.cards || []).map(c => [c.id, `${c.name} ···${c.last4}`]),
+    ['other', 'Something else, not a card'],
+  ];
+  const cur = formDest || options[0][0];
+  return `
+    <div class="frow"><div class="lbl">What was it?</div><input id="pbDesc" type="text" autocomplete="off" value="${esc(formVals.desc)}"></div>
+    <div class="frow-2">
+      <div class="frow" style="margin-bottom:0"><div class="lbl">How much?</div><input id="pbAmt" type="number" inputmode="decimal" min="0" step="1" value="${formVals.amt}"></div>
+      <div class="frow" style="margin-bottom:0"><div class="lbl">Where did it go?</div>
+        <select id="pbDest" class="mselect">${options.map(([k, l]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
+      </div>
+    </div>
+    ${cur === 'other' ? `<div class="frow"><div class="lbl">What was it, then?</div><input id="pbOther" type="text" autocomplete="off" placeholder="Affirm, a friend, the tab at work…" value="${esc(formVals.other)}"></div>` : ''}
+    <div class="frow-2">
+      <div class="frow" style="margin-bottom:0"><div class="lbl">Bought on</div><input id="pbOn" type="date" value="${formVals.on}"></div>
+      <div class="frow" style="margin-bottom:0"><div class="lbl">Meant to clear by</div><input id="pbWant" type="date" value="${formVals.want}"></div>
+    </div>
+    <div class="fnote" style="font-family:var(--sans);font-size:12px;color:var(--faint);line-height:1.6;margin-bottom:12px">${destinationNote(cur)}</div>
+    <button class="pb-btn" id="pbLog">Log it</button>`;
+}
+
+/* Same note desktop shows under the destination — the whole point of
+ * choosing a card is knowing how long you actually have. */
+function destinationNote(value) {
+  if (value === 'other') {
+    return 'No statement to beat here — the only date that matters is the one you set. It stays open until you clear it.';
+  }
+  const card = cardFor(value);
+  if (!card) return '';
+  const t = calc(card, state.closesByCard[card.id] || [], today());
+  return `That card's statement closes <b>${t.certain ? '' : '~'}${fmtD(t.close)}</b> — ` +
+    (t.daysToClose <= 0
+      ? 'today or already past, so this lands on the current statement.'
+      : `<b>${t.daysToClose} day${t.daysToClose === 1 ? '' : 's'}</b> to clear it before it becomes a bill.`);
 }
 
 function cardHTML(d) {
@@ -118,30 +157,42 @@ function wire() {
   const toggle = host.querySelector('#pbToggle');
   if (toggle) toggle.onclick = () => { formOpen = !formOpen; render(); if (formOpen) host.querySelector('#pbDesc')?.focus(); };
 
+  const desc = host.querySelector('#pbDesc');
+  if (desc) desc.oninput = () => { formVals.desc = desc.value; };
+  const amt = host.querySelector('#pbAmt');
+  if (amt) amt.oninput = () => { formVals.amt = amt.value; };
+  const other = host.querySelector('#pbOther');
+  if (other) other.oninput = () => { formVals.other = other.value; };
+  const on = host.querySelector('#pbOn');
+  if (on) on.onchange = () => { formVals.on = on.value; };
+  const want = host.querySelector('#pbWant');
+  if (want) want.onchange = () => { formVals.want = want.value; };
+  const dest = host.querySelector('#pbDest');
+  if (dest) dest.onchange = () => { formDest = dest.value; render(); host.querySelector('#pbDesc')?.focus(); };
+
   const log = host.querySelector('#pbLog');
   if (log) log.onclick = async () => {
-    const desc = host.querySelector('#pbDesc').value.trim();
-    const amount = parseFloat(host.querySelector('#pbAmt').value);
-    const cardInput = host.querySelector('#pbCard').value.trim();
-    if (!desc) { toast('Give it a name'); return; }
-    if (!isFinite(amount) || amount <= 0) { toast('Enter the amount'); return; }
-
-    const matchedCard = (state.cards || []).find(c =>
-      cardInput && (c.name.toLowerCase() === cardInput.toLowerCase() || c.last4 === cardInput.replace(/\D/g, '')));
+    const description = formVals.desc.trim();
+    const amount = parseFloat(formVals.amt);
+    const destVal = formDest || (state.cards || [])[0]?.id || 'other';
+    if (!description) { toast('Give it a name so you know what it was'); return; }
+    if (!isFinite(amount) || amount <= 0) { toast('Enter the amount you put on the card'); return; }
 
     try {
       await createPayback({
-        description: desc, amount,
-        cardId: matchedCard ? matchedCard.id : null,
-        offCardLabel: matchedCard ? null : (cardInput || null),
-        incurredOn: key(today()),
-        intendedOn: key(add(today(), 7)),
+        description, amount,
+        cardId: destVal === 'other' ? null : destVal,
+        offCardLabel: destVal === 'other' ? (formVals.other.trim() || null) : null,
+        incurredOn: formVals.on || key(today()),
+        intendedOn: formVals.want || key(add(today(), 7)),
       });
       await refetchAndRepaint();
       formOpen = true;
+      formVals = { desc: '', amt: '', other: '', on: key(today()), want: key(add(today(), 7)) };
+      formDest = null;
       render();
       host.querySelector('#pbDesc')?.focus();
-      toast('Logged — ' + desc);
+      toast('Logged — ' + description);
     } catch (err) { toast("Couldn't save that: " + err.message); }
   };
 

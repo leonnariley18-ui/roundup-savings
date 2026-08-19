@@ -12,7 +12,6 @@ import { reload } from './state.js';
 
 import * as week from './screens/week.js';
 import * as calendar from './screens/calendar.js';
-import * as bills from './screens/bills.js';
 import * as paybacks from './screens/paybacks.js';
 import * as whichcard from './screens/whichcard.js';
 
@@ -40,7 +39,6 @@ async function main() {
 
   registerScreen('week', week);
   registerScreen('cal', calendar);
-  registerScreen('bills', bills);
   registerScreen('pb', paybacks);
   registerScreen('wc', whichcard);
 
