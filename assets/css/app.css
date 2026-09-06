@@ -381,7 +381,7 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
 @media(max-width:640px){.vrow .vn{min-width:100%}.vin{flex:1}}
 
 /* ---------- paybacks ---------- */
-.pb{position:relative;z-index:0;background:transparent;border:0;border-top:1px solid var(--line);border-left:3px solid var(--accent-2);border-radius:0;padding:15px 16px;margin-bottom:0}
+.pb{position:relative;z-index:0;background:var(--panel);border:1px solid var(--soft);border-left:3px solid var(--accent-2);border-radius:0;padding:16px 18px;margin-bottom:12px}
 .pb.late{border-left-color:var(--alert)}
 .pb.gone{opacity:.5;border-left-color:var(--faint);border-left-style:dashed}
 .pb .top{display:flex;align-items:baseline;gap:10px;margin-bottom:3px}
