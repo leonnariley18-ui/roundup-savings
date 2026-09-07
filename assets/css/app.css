@@ -381,12 +381,43 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
 @media(max-width:640px){.vrow .vn{min-width:100%}.vin{flex:1}}
 
 /* ---------- paybacks ---------- */
-.pb{position:relative;z-index:0;background:var(--panel);border:1px solid var(--soft);border-left:3px solid var(--accent-2);border-radius:0;padding:16px 18px;margin-bottom:12px}
+
+/* Current / Became bill / Cleared. Full totals in the stat row and split bar
+ * above never change with the active tab — only which rows are listed does. */
+.pbtabs{display:flex;border-bottom:1px solid var(--soft);margin-bottom:14px}
+.pbtab{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--faint);cursor:pointer;
+  border-radius:0;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  padding:10px 4px;margin-right:24px}
+.pbtab .n{color:var(--faint);margin-left:5px}
+.pbtab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.pbtab.on .n{color:var(--accent)}
+.pbtab:hover:not(.on){color:var(--muted)}
+
+/* Bounded rather than running the page long — each row is collapsed to a
+ * single line until clicked. */
+.pblist{max-height:min(600px,60vh);overflow-y:auto;border:1px solid var(--soft);background:var(--bg)}
+.pbempty{padding:34px 18px;text-align:center;color:var(--faint);font-size:13px}
+
+.pb{position:relative;z-index:0;background:var(--panel);border:1px solid var(--soft);border-left:3px solid var(--accent-2);border-radius:0;margin:10px}
 .pb.late{border-left-color:var(--alert)}
-.pb.gone{opacity:.5;border-left-color:var(--faint);border-left-style:dashed}
-.pb .top{display:flex;align-items:baseline;gap:10px;margin-bottom:3px}
-.pb .d{font-family:var(--serif);font-size:23px;flex:1;line-height:1.15}
-.pb .a{font-family:var(--mono);font-size:17px;font-variant-numeric:tabular-nums}
+.pb.gone{border-left-color:var(--faint);border-left-style:dashed}
+.pb.offcard{border-left-color:var(--pbk)}
+
+.pb-head{display:flex;align-items:center;gap:12px;padding:15px 18px;cursor:pointer}
+.pb-head .chev{font-size:11px;color:var(--faint);transition:transform .15s;flex-shrink:0}
+.pb.open .pb-head .chev{transform:rotate(90deg)}
+.pb .d{font-family:var(--serif);font-size:20px;flex:1;line-height:1.15}
+.pb .a{font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums}
+
+.urg{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;
+  border:1px solid var(--line);white-space:nowrap;flex-shrink:0}
+.urg.late{color:var(--alert);border-color:var(--alert)}
+.urg.ok{color:var(--accent);border-color:var(--accent)}
+.urg.gone{color:var(--faint);border-color:var(--line)}
+.urg.won{color:var(--save);border-color:var(--save)}
+
+.pb-body{display:none;padding:0 18px 16px}
+.pb.open .pb-body{display:block}
 .pb .l2{font-size:11px;color:var(--faint);margin-bottom:12px}
 .prog{height:2px;background:var(--line);border-radius:0;overflow:hidden;margin-bottom:9px}
 .prog i{display:block;height:100%;background:var(--accent)}
@@ -532,11 +563,17 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
   width:66px;outline:none;text-align:right;-moz-appearance:textfield;font-variant-numeric:tabular-nums}
 .pfield input::-webkit-outer-spin-button,.pfield input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .pfield:focus-within{border-bottom-color:var(--accent)}
-.paylog{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--faint);margin-top:9px;
-  padding-top:9px;border-top:1px solid var(--soft)}
-.pb.cleared{border-left-color:var(--accent);opacity:.72}
-.pb.cleared .d{text-decoration:line-through;text-decoration-color:var(--faint);color:var(--muted)}
-.pb.cleared .a{color:var(--faint);text-decoration:line-through}
+/* Payment history — a real list, not one easy-to-miss line, and in the same
+ * green the app already uses for money that landed (round-up's --save). */
+.paylog{margin-top:14px;padding-top:12px;border-top:1px solid var(--soft)}
+.paylog .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--save);opacity:.85;margin-bottom:8px}
+.payrow{display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--soft);font-size:12.5px;color:var(--save)}
+.payrow:last-child{border-bottom:0}
+.payrow .pdate{width:90px;flex-shrink:0}
+.payrow .pamt{font-family:var(--mono);font-variant-numeric:tabular-nums;flex:1;text-align:right}
+
+.pb.cleared{border-left-color:var(--accent);opacity:.85}
+.pb.cleared .d{color:var(--muted)}
 .pb.cleared .prog i{background:var(--accent)}
 
 /* round-up */
