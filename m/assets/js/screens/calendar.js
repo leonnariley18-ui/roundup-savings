@@ -47,7 +47,7 @@ export function render() {
       /* A note gets a bold N instead of a colour bar — --muted sat too close
          to --accent's bill bar to tell apart at this size. */
       const pips = events.map(e => e.type === 'note'
-        ? `<span class="mpip-note">N</span>`
+        ? `<span class="mpip-note">✏️</span>`
         : `<span style="background:${e.colour}"></span>`).join('');
       const cls = ['cd'];
       if (out) cls.push('out');
@@ -83,7 +83,7 @@ export function render() {
       <div class="mle"><span style="background:var(--alert)"></span>Payback</div>
       <div class="mle"><span style="background:var(--pbk)"></span>Your target</div>
       <div class="mle"><span style="background:var(--save)"></span>Round-up</div>
-      <div class="mle"><span class="mpip-note">N</span>Note</div>
+      <div class="mle"><span class="mpip-note">✏️</span>Note</div>
     </div>
     ${billsSectionHTML(y, m, isCurrentMonth)}`;
 

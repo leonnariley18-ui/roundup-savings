@@ -102,7 +102,7 @@ function renderMonth() {
          gets a pencil glyph instead of a bar: --muted sat too close to
          --accent's bill bar to tell apart at a glance. */
       const pips = events.map(e => e.type === 'note'
-        ? `<i class="pip-note">✎</i>`
+        ? `<i class="pip-note">✏️</i>`
         : `<i style="background:${e.colour}"></i>`).join('');
 
       rows += `<button class="${cls.join(' ')}" data-day="${k}"
@@ -131,7 +131,7 @@ function renderMonth() {
       <span><i style="background:var(--pbk)"></i>Your target to clear it</span>
       <span><i style="background:var(--loan)"></i>Loan payment</span>
       <span><i style="background:var(--save)"></i>Round-up moved</span>
-      <span><i class="pip-note">✎</i>Note</span>
+      <span><i class="pip-note">✏️</i>Note</span>
     </div>
     <div style="font-size:11px;color:var(--faint);margin-top:12px">Click a week number for the full week. Click any day to see it and jot a note.</div>`;
 
