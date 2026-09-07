@@ -23,7 +23,7 @@ import { selectField, onSelectChange, selectValue } from '../ui/select.js';
 import { toast } from '../ui/toast.js';
 import { openHelp } from '../help.js';
 
-let state = { cards: null, paybacks: [], paymentsByPayback: {}, lastDismissed: null };
+let state = { cards: null, paybacks: [], paymentsByPayback: {} };
 let host = null;
 let onChanged = () => {};
 let tab = 'current';
@@ -72,6 +72,7 @@ function render() {
 
   const current = all.filter(d => d.state === 'open');
   const gone = all.filter(d => d.state === 'became_bill' && !d.payback.dismissed);
+  const dismissed = all.filter(d => d.state === 'became_bill' && d.payback.dismissed);
   const cleared = all.filter(d => d.state === 'cleared');
 
   host.innerHTML = `
@@ -92,20 +93,20 @@ function render() {
       <button class="pbtab${tab === 'gone' ? ' on' : ''}" data-tab="gone">Became bill<span class="n">${gone.length}</span></button>
       <button class="pbtab${tab === 'cleared' ? ' on' : ''}" data-tab="cleared">Cleared<span class="n">${cleared.length}</span></button>
     </div>
-    ${undoBannerHTML()}
-    <div class="pblist" id="pblist">${listHTML(current, gone, cleared)}</div>`;
+    <div class="pblist" id="pblist">${listHTML(current, gone, dismissed, cleared)}</div>`;
 
   wire();
 }
 
-function listHTML(current, gone, cleared) {
+function listHTML(current, gone, dismissed, cleared) {
   if (tab === 'current') {
     return current.length ? current.map(currentRowHTML).join('')
       : '<div class="pbempty">Nothing fronted right now.</div>';
   }
   if (tab === 'gone') {
-    return gone.length ? gone.map(goneRowHTML).join('')
-      : '<div class="pbempty">Nothing here — every payback either cleared or is still open.</div>';
+    if (!gone.length && !dismissed.length) return '<div class="pbempty">Nothing here — every payback either cleared or is still open.</div>';
+    return gone.map(goneRowHTML).join('') +
+      (dismissed.length ? `<div class="pbsublbl">Dismissed</div>${dismissed.map(dismissedRowHTML).join('')}` : '');
   }
   return cleared.length ? cleared.map(clearedRowHTML).join('')
     : '<div class="pbempty">Nothing cleared yet.</div>';
@@ -178,13 +179,6 @@ function destinationNote(value) {
     (t.daysToClose <= 0
       ? 'today or already past, so this lands on the current statement.'
       : `<b>${t.daysToClose} day${t.daysToClose === 1 ? '' : 's'}</b> to clear it before it becomes a bill.`);
-}
-
-function undoBannerHTML() {
-  if (!state.lastDismissed) return '';
-  return `<div class="undo" style="margin-top:14px">
-    <span>Dismissed "${esc(state.lastDismissed.description)}"</span>
-    <button id="undoBtn">Undo</button></div>`;
 }
 
 /* ---------------------------------------------------------------- rows */
@@ -261,6 +255,24 @@ function goneRowHTML(d) {
   </div>`;
 }
 
+/* Dismissed but never lost — folded to the bottom of Became bill, faded,
+ * with its own permanent Restore rather than a one-shot undo that vanishes
+ * on reload. */
+function dismissedRowHTML(d) {
+  const id = d.payback.id;
+  const isOpen = expanded.has(id);
+  return `<div class="pb gone dismissed${isOpen ? ' open' : ''}">
+    ${headHTML(d, 'Dismissed', 'gone')}
+    <div class="pb-body">
+      <div class="l2">Landed on the ${fmtD(d.closeDate)} statement · now part of that bill</div>
+      ${paylogHTML(d.payments)}
+      <div class="bot">
+        <button data-restore="${id}">Restore</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 function clearedRowHTML(d) {
   const p = d.payback;
   const id = p.id;
@@ -326,23 +338,21 @@ function wire() {
     try {
       await dismissPayback(p.id, true);
       p.dismissed = true;
-      state.lastDismissed = p;
       render();
-      toast('Dismissed — it stays on the bill');
+      toast('Dismissed — folded to the bottom of Became bill');
     } catch (err) { toast("Couldn't dismiss that: " + err.message); }
   });
 
-  const undo = host.querySelector('#undoBtn');
-  if (undo) undo.onclick = async () => {
-    const p = state.lastDismissed;
+  host.querySelectorAll('[data-restore]').forEach(b => b.onclick = async e => {
+    e.stopPropagation();
+    const p = state.paybacks.find(x => x.id === b.dataset.restore);
     try {
       await dismissPayback(p.id, false);
       p.dismissed = false;
-      state.lastDismissed = null;
       render();
       toast('Restored');
     } catch (err) { toast("Couldn't restore that: " + err.message); }
-  };
+  });
 
   const help = host.querySelector('[data-help]');
   if (help) help.onclick = () => openHelp('pb');
