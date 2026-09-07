@@ -115,6 +115,18 @@ export async function removeDecision(id) {
   await run(getDb().from('card_decisions').delete().eq('id', id));
 }
 
+/* Linked after the fact, from the payback's side — a card decision and a
+ * payback are separate concepts (a rewards choice vs. money you're fronting)
+ * that sometimes turn out to be the same purchase. Never set at creation;
+ * only ever attached once both already exist. */
+export async function linkDecisionToPayback(decisionId, paybackId) {
+  await run(getDb().from('card_decisions').update({ payback_id: paybackId }).eq('id', decisionId));
+}
+
+export async function unlinkDecision(decisionId) {
+  await run(getDb().from('card_decisions').update({ payback_id: null }).eq('id', decisionId));
+}
+
 /* ---------------------------------------------------------------- paybacks */
 
 export async function loadPaybacks() {

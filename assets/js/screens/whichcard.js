@@ -451,7 +451,8 @@ function logHTML() {
     <div class="panel" style="padding:3px 2px;margin-bottom:12px">
       ${named.slice(0, 12).map(d => `<div class="lrow">
         <span class="when">${fmtD(new Date(d.decided_at))}</span>
-        <span class="card">${d.name}<span class="sub"> · ${(CATS.find(c => c[0] === d.category) || ['', '—'])[1].toLowerCase()}</span></span>
+        <span class="card">${d.name}<span class="sub"> · ${(CATS.find(c => c[0] === d.category) || ['', '—'])[1].toLowerCase()}${
+          d.payback_id ? ' · <span style="color:var(--accent)">linked to a payback</span>' : ''}</span></span>
         ${d.amount ? `<span class="amt">${money(d.amount)}</span>` : ''}
         <span class="back">&#10003;</span>
         <button class="x" data-unlog="${d.id}" aria-label="Remove this entry" title="Remove">×</button>
