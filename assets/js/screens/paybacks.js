@@ -17,7 +17,7 @@ import { today, add, key, pd, fmtD, money } from '../dates.js';
 import { derive, summarise, clampPayment } from '../paybacks.js';
 import { loadCards, loadPaybacks, loadDecisions, createPayback, addPayment, removeLastPayment,
          reschedulePayback, dismissPayback, setPaybackStatus, logEvent,
-         linkDecisionToPayback, unlinkDecision } from '../data.js';
+         linkDecisionToPayback } from '../data.js';
 import { calc } from '../statements.js';
 import { dateField, onDateChange, dateValue, setDate } from '../ui/datepicker.js';
 import { selectField, onSelectChange, selectValue } from '../ui/select.js';
@@ -197,32 +197,34 @@ function headHTML(d, label, urgClass) {
 
 /* A card decision and a payback are separate things — a rewards choice vs.
  * money being fronted — that sometimes turn out to be the same purchase.
- * Linking is optional and always after the fact, from here only; nothing
- * about logging a card decision changes. */
+ * Linking is optional, made after the fact from a Current payback only, and
+ * permanent once made — a one-time choice, not something to second-guess
+ * later, so a linked row has no unlink control. */
 function linkedDecisionsHTML(paybackId) {
   const linked = state.decisions.filter(d => d.payback_id === paybackId);
-  const unlinked = state.decisions.filter(d => !d.payback_id);
-
-  const linkedRows = linked.map(d => {
-    const card = cardFor(d.card_id);
-    return `<div class="payrow" style="color:var(--muted)">
-      <span class="pdate">${fmtD(new Date(d.decided_at))}</span>
-      <span style="flex:1">${card ? esc(card.name) : 'a card you no longer have'} · ${esc(cat(d.category))}</span>
-      <button data-unlink-decision="${d.id}" style="background:transparent;border:0;color:var(--faint);cursor:pointer;font-size:15px;line-height:1;padding:0 4px;font-family:var(--mono)">×</button>
+  if (linked.length) {
+    return `<div class="paylog" style="color:inherit">
+      <div class="lbl" style="color:var(--faint)">Card decision</div>
+      ${linked.map(d => {
+        const card = cardFor(d.card_id);
+        return `<div class="payrow" style="color:var(--muted)">
+          <span class="pdate">${fmtD(new Date(d.decided_at))}</span>
+          <span style="flex:1">${card ? esc(card.name) : 'a card you no longer have'} · ${esc(cat(d.category))}</span>
+        </div>`;
+      }).join('')}
     </div>`;
-  }).join('');
+  }
 
-  const picker = unlinked.length ? `<div style="display:flex;gap:8px;align-items:center;margin-top:${linked.length ? 8 : 0}px">
-    <select class="mselect" id="declink-${paybackId}" style="flex:1;background:transparent;border:0;border-bottom:1.5px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:12px;padding:4px 2px">
-      ${unlinked.map(d => `<option value="${d.id}">${fmtD(new Date(d.decided_at))} · ${cardFor(d.card_id)?.name || '?'} · ${cat(d.category)}</option>`).join('')}
-    </select>
-    <button data-link-decision="${paybackId}">Link a card decision</button>
-  </div>` : '';
-
-  if (!linked.length && !picker) return '';
+  const unlinked = state.decisions.filter(d => !d.payback_id);
+  if (!unlinked.length) return '';
   return `<div class="paylog" style="color:inherit">
     <div class="lbl" style="color:var(--faint)">Card decision</div>
-    ${linkedRows}${picker}
+    <div style="display:flex;gap:8px;align-items:center">
+      <select class="mselect" id="declink-${paybackId}" style="flex:1;background:transparent;border:0;border-bottom:1.5px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:12px;padding:4px 2px">
+        ${unlinked.map(d => `<option value="${d.id}">${fmtD(new Date(d.decided_at))} · ${cardFor(d.card_id)?.name || '?'} · ${cat(d.category)}</option>`).join('')}
+      </select>
+      <button data-link-decision="${paybackId}">Link a card decision</button>
+    </div>
   </div>`;
 }
 
@@ -287,7 +289,6 @@ function goneRowHTML(d) {
         <button data-markpaid="${id}">Mark paid</button>
         <button data-dismiss="${id}">Dismiss</button>
       </div>
-      ${linkedDecisionsHTML(id)}
     </div>
   </div>`;
 }
@@ -325,7 +326,6 @@ function clearedRowHTML(d) {
           : `<button data-undopay="${id}">Undo last payment</button>`}
       </div>
       ${paylogHTML(d.payments)}
-      ${linkedDecisionsHTML(id)}
     </div>
   </div>`;
 }
@@ -381,15 +381,6 @@ function wire() {
       await reload();
       toast('Linked');
     } catch (err) { toast("Couldn't link that: " + err.message); }
-  });
-
-  host.querySelectorAll('[data-unlink-decision]').forEach(b => b.onclick = async e => {
-    e.stopPropagation();
-    try {
-      await unlinkDecision(b.dataset.unlinkDecision);
-      await reload();
-      toast('Unlinked');
-    } catch (err) { toast("Couldn't unlink that: " + err.message); }
   });
 
   host.querySelectorAll('[data-dismiss]').forEach(b => b.onclick = async e => {

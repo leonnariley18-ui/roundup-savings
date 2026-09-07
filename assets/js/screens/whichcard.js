@@ -11,7 +11,8 @@
 import { today, add, key, pd, fmtD, fmtDW, money, DW, dayIndex, daysBetween } from '../dates.js';
 import { rankCards } from '../ranking.js';
 import { loadCards, loadDecisions, logDecision, removeDecision, setCapBlown,
-         setChoiceCategory, callFunction, setCardBalance, setCardLink } from '../data.js';
+         setChoiceCategory, callFunction, setCardBalance, setCardLink,
+         createPayback, linkDecisionToPayback } from '../data.js';
 import { dateField, onDateChange, setDate } from '../ui/datepicker.js';
 import { selectField, onSelectChange, selectValue } from '../ui/select.js';
 import { toast } from '../ui/toast.js';
@@ -31,7 +32,8 @@ const BOFA_CHOICES = [
 ];
 
 let state = { refDate: today(), category: 'dining', amount: 0, data: null, decisions: [],
-              linking: null };   // null = panel closed; otherwise the fetched accounts
+              linking: null,   // null = panel closed; otherwise the fetched accounts
+              frontIt: false, frontDesc: '' };   // optional "also log a payback" toggle
 let host = null;
 
 export async function mount(el) {
@@ -151,6 +153,14 @@ function pickHTML(best, eligible, cards) {
         <button class="go" id="logUse">I used this card</button>
         <span class="hint">Records that you took the pick &middot; nothing else happens</span>
       </div>
+      <label class="capcheck" style="margin-top:12px">
+        <input type="checkbox" id="frontIt" ${state.frontIt ? 'checked' : ''}>
+        <span>I'll need to pay this back &mdash; also log it as a payback</span>
+      </label>
+      ${state.frontIt ? `<div class="fld" style="margin-top:10px">
+        <span class="label">What was it?</span>
+        <input id="frontDesc" type="text" autocomplete="off" value="${esc(state.frontDesc)}" placeholder="Concert tickets, a group dinner…">
+      </div>` : ''}
     </div>`;
 }
 
@@ -510,12 +520,22 @@ function wire() {
     } catch (err) { toast("Couldn't save that: " + err.message); }
   };
 
+  const front = host.querySelector('#frontIt');
+  if (front) front.onchange = () => { state.frontIt = front.checked; render(); };
+  const frontDesc = host.querySelector('#frontDesc');
+  if (frontDesc) frontDesc.oninput = () => { state.frontDesc = frontDesc.value; };
+
   const use = host.querySelector('#logUse');
   if (use) use.onclick = async () => {
     const { cards, rewardsByCard, choiceByCard, closesByCard } = state.data;
     const { best } = rankCards({ cards, rewardsByCard, choiceByCard, closesByCard,
       category: state.category, amount: state.amount, on: state.refDate });
     if (!best) return;
+
+    const description = state.frontDesc.trim();
+    if (state.frontIt && !description) { toast('Give the payback a name first'); return; }
+    if (state.frontIt && !state.amount) { toast('Enter an amount above to log it as a payback'); return; }
+
     use.disabled = true;
     try {
       const row = await logDecision({
@@ -526,8 +546,24 @@ function wire() {
         decidedAt: new Date(state.refDate).toISOString(),
       });
       state.decisions.unshift(row);
+
+      /* Optional, and off by default — most card decisions aren't something
+         you're fronting. When it is, this saves re-entering the same card,
+         amount and date over in Paybacks, and links the two immediately
+         rather than making you do it after the fact. */
+      if (state.frontIt) {
+        const pb = await createPayback({
+          description, amount: state.amount, cardId: best.card.id,
+          incurredOn: key(state.refDate), intendedOn: key(add(state.refDate, 7)),
+        });
+        await linkDecisionToPayback(row.id, pb.id);
+        state.frontIt = false;
+        state.frontDesc = '';
+        toast('Logged — you took the pick, and logged a payback for it');
+      } else {
+        toast('Logged — you took the pick');
+      }
       render();
-      toast('Logged — you took the pick');
     } catch (err) {
       use.disabled = false;
       toast("Couldn't log that: " + err.message);
