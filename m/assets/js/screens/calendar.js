@@ -44,7 +44,11 @@ export function render() {
       const out = d.getMonth() !== m;
       const isT = k === todayKey;
       const events = eventsOn(index, k);
-      const pips = events.map(e => `<span style="background:${e.colour}"></span>`).join('');
+      /* A note gets a bold N instead of a colour bar — --muted sat too close
+         to --accent's bill bar to tell apart at this size. */
+      const pips = events.map(e => e.type === 'note'
+        ? `<span class="mpip-note">N</span>`
+        : `<span style="background:${e.colour}"></span>`).join('');
       const cls = ['cd'];
       if (out) cls.push('out');
       if (isT) cls.push('today-c');
@@ -79,7 +83,7 @@ export function render() {
       <div class="mle"><span style="background:var(--alert)"></span>Payback</div>
       <div class="mle"><span style="background:var(--pbk)"></span>Your target</div>
       <div class="mle"><span style="background:var(--save)"></span>Round-up</div>
-      <div class="mle"><span style="background:var(--muted)"></span>Note</div>
+      <div class="mle"><span class="mpip-note">N</span>Note</div>
     </div>
     ${billsSectionHTML(y, m, isCurrentMonth)}`;
 

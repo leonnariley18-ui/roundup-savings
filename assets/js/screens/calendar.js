@@ -98,8 +98,12 @@ function renderMonth() {
       if (k === todayKey) cls.push('today');
       if (payday(d)) cls.push('pay');
 
-      /* Short bars, never circles — circles read as notification pips. */
-      const pips = events.map(e => `<i style="background:${e.colour}"></i>`).join('');
+      /* Short bars, never circles — circles read as notification pips. A note
+         gets a pencil glyph instead of a bar: --muted sat too close to
+         --accent's bill bar to tell apart at a glance. */
+      const pips = events.map(e => e.type === 'note'
+        ? `<i class="pip-note">✎</i>`
+        : `<i style="background:${e.colour}"></i>`).join('');
 
       rows += `<button class="${cls.join(' ')}" data-day="${k}"
         aria-label="${MFULL[d.getMonth()]} ${d.getDate()}">
@@ -127,7 +131,7 @@ function renderMonth() {
       <span><i style="background:var(--pbk)"></i>Your target to clear it</span>
       <span><i style="background:var(--loan)"></i>Loan payment</span>
       <span><i style="background:var(--save)"></i>Round-up moved</span>
-      <span><i style="background:var(--muted)"></i>Note</span>
+      <span><i class="pip-note">✎</i>Note</span>
     </div>
     <div style="font-size:11px;color:var(--faint);margin-top:12px">Click a week number for the full week. Click any day to see it and jot a note.</div>`;
 
@@ -236,8 +240,13 @@ function renderWeek() {
     input.onchange = async () => {
       const [billId, dueDate] = (input.closest('.row').dataset.occ || '').split('|');
       if (!billId) return;
+      /* A blank or unparseable value must never persist as $0 — that is
+         indistinguishable from a real zero and, once written, permanently
+         overrides the bill's actual amount (see 0008_bill_instance_amount_nullable.sql). */
+      const amount = parseFloat(input.value);
+      if (!isFinite(amount) || amount < 0) { toast('Enter the amount'); return; }
       try {
-        await touchOccurrence(billId, dueDate, { amount: parseFloat(input.value) || 0 });
+        await touchOccurrence(billId, dueDate, { amount });
         await reload();
       } catch (err) { toast("Couldn't save that: " + err.message); }
     };

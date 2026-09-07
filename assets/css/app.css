@@ -91,10 +91,12 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .cell.today .n{color:var(--text)}
 .cell .pips{position:absolute;top:28px;left:8px;display:flex;gap:4px;flex-wrap:wrap;max-width:84%}
 .cell .pips i{width:13px;height:2px;border-radius:0}
+.cell .pips i.pip-note{width:auto;height:auto;font-style:normal;font-size:10px;line-height:1;color:var(--accent)}
 .cell .amt{position:absolute;bottom:7px;left:8px;font-size:9.5px;color:var(--faint);font-family:var(--mono)}
 .legend{display:flex;gap:16px;margin-top:15px;flex-wrap:wrap;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--faint);text-transform:uppercase}
 .legend span{display:flex;align-items:center;gap:6px}
 .legend i{width:12px;height:2px;border-radius:0}
+.legend i.pip-note{width:auto;height:auto;font-style:normal;font-size:11px;line-height:1;color:var(--accent)}
 @media(max-width:620px){
   .cgrid{grid-template-columns:34px repeat(7,1fr);gap:3px}
   .wknum .n{font-size:17px}
