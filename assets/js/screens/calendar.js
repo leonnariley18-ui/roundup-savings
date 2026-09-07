@@ -99,17 +99,20 @@ function renderMonth() {
       if (payday(d)) cls.push('pay');
 
       /* Short bars, never circles — circles read as notification pips. A note
-         gets a pencil glyph instead of a bar: --muted sat too close to
-         --accent's bill bar to tell apart at a glance. */
-      const pips = events.map(e => e.type === 'note'
-        ? `<i class="pip-note">✏️</i>`
-        : `<i style="background:${e.colour}"></i>`).join('');
+         gets a pencil instead of a bar — --muted sat too close to --accent's
+         bill bar to tell apart at a glance — and sits pinned in its own
+         corner rather than in the flowing pip row, so it lands in the same
+         spot every day instead of drifting with however many other pips
+         happen to be there first. */
+      const pips = events.filter(e => e.type !== 'note').map(e => `<i style="background:${e.colour}"></i>`).join('');
+      const hasNote = events.some(e => e.type === 'note');
 
       rows += `<button class="${cls.join(' ')}" data-day="${k}"
         aria-label="${MFULL[d.getMonth()]} ${d.getDate()}">
         <span class="n mono">${d.getDate()}</span>
         ${billTotal && !outside ? `<span class="amt">$${Math.round(billTotal).toLocaleString()}</span>` : ''}
-        ${pips ? `<span class="pips">${pips}</span>` : ''}</button>`;
+        ${pips ? `<span class="pips">${pips}</span>` : ''}
+        ${hasNote ? `<span class="pip-note">✏️</span>` : ''}</button>`;
       cur = add(cur, 1);
     }
   }

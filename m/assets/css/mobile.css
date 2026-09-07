@@ -81,11 +81,13 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
 .cd.today-c .cdn{color:var(--text)}
 .mpips{display:flex;gap:2px;margin-top:4px;flex-wrap:wrap}
 .mpips span{display:block;width:12px;height:2px}
-.mpips span.mpip-note{width:auto;height:auto;font-family:var(--mono);font-weight:700;font-size:8px;line-height:1;color:var(--accent)}
+/* Pinned to its own corner rather than the flowing pip row, so it lands in
+   the same spot every day instead of drifting with the other pips. */
+.mpip-note{position:absolute;bottom:4px;right:5px;font-size:9px;line-height:1}
 .cal-legend{display:flex;gap:12px;flex-wrap:wrap;padding:12px 20px;border-top:1px solid var(--soft);flex-shrink:0}
 .mle{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .mle span{display:block;width:12px;height:2px}
-.mle span.mpip-note{width:auto;height:auto;font-weight:700;color:var(--accent)}
+.mle .mpip-note{position:static;font-size:10px}
 
 /* ---------- bills ---------- */
 .bill-summ{padding:14px 20px;border-bottom:1px solid var(--soft);flex-shrink:0}
