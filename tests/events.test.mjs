@@ -103,6 +103,20 @@ test('an unconfirmed close is marked estimated', () => {
   assert.match(close.sub, /estimated/);
 });
 
+test('a logged close still shows on its own date, not just future predictions', () => {
+  /* A rolling-cycle card whose most recent observation falls inside the
+     visible range. closesForCard only ever steps forward from that
+     observation, so without special handling the logged date itself would
+     never appear — only the next cycle out. */
+  const index = build({ closesByCard: { c1: ['2026-08-13', '2026-07-16'] } });
+  const closes = eventsBetween(index, FROM, TO).filter(e => e.type === 'close');
+  assert.deepEqual(closes.map(e => e.date), ['2026-08-13', '2026-09-10']);
+  const logged = closes.find(e => e.date === '2026-08-13');
+  assert.equal(logged.sub, 'Statement closed', 'the observation itself, not marked estimated or predicted');
+  const predicted = closes.find(e => e.date === '2026-09-10');
+  assert.match(predicted.sub, /Statement closes/);
+});
+
 /* ---------------------------------------------------------------- paybacks */
 
 test('an open payback puts both its deadline and its target on the calendar', () => {
