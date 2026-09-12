@@ -200,7 +200,7 @@ function headHTML(d, label, urgClass) {
  * Linking is optional, made after the fact from a Current payback only, and
  * permanent once made — a one-time choice, not something to second-guess
  * later, so a linked row has no unlink control. */
-function linkedDecisionsHTML(paybackId) {
+function linkedDecisionsHTML(paybackId, readonly) {
   const linked = state.decisions.filter(d => d.payback_id === paybackId);
   if (linked.length) {
     return `<div class="paylog" style="color:inherit">
@@ -214,6 +214,7 @@ function linkedDecisionsHTML(paybackId) {
       }).join('')}
     </div>`;
   }
+  if (readonly) return '';
 
   const unlinked = state.decisions.filter(d => !d.payback_id);
   if (!unlinked.length) return '';
@@ -326,6 +327,7 @@ function clearedRowHTML(d) {
           : `<button data-undopay="${id}">Undo last payment</button>`}
       </div>
       ${paylogHTML(d.payments)}
+      ${linkedDecisionsHTML(id, true)}
     </div>
   </div>`;
 }
