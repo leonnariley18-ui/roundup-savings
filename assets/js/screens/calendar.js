@@ -98,14 +98,21 @@ function renderMonth() {
       if (k === todayKey) cls.push('today');
       if (payday(d)) cls.push('pay');
 
-      /* Short bars, never circles — circles read as notification pips. */
-      const pips = events.map(e => `<i style="background:${e.colour}"></i>`).join('');
+      /* Short bars, never circles — circles read as notification pips. A note
+         gets a pencil instead of a bar — --muted sat too close to --accent's
+         bill bar to tell apart at a glance — and sits pinned in its own
+         corner rather than in the flowing pip row, so it lands in the same
+         spot every day instead of drifting with however many other pips
+         happen to be there first. */
+      const pips = events.filter(e => e.type !== 'note').map(e => `<i style="background:${e.colour}"></i>`).join('');
+      const hasNote = events.some(e => e.type === 'note');
 
       rows += `<button class="${cls.join(' ')}" data-day="${k}"
         aria-label="${MFULL[d.getMonth()]} ${d.getDate()}">
         <span class="n mono">${d.getDate()}</span>
         ${billTotal && !outside ? `<span class="amt">$${Math.round(billTotal).toLocaleString()}</span>` : ''}
-        ${pips ? `<span class="pips">${pips}</span>` : ''}</button>`;
+        ${pips ? `<span class="pips">${pips}</span>` : ''}
+        ${hasNote ? `<span class="pip-note">✏️</span>` : ''}</button>`;
       cur = add(cur, 1);
     }
   }
@@ -127,7 +134,7 @@ function renderMonth() {
       <span><i style="background:var(--pbk)"></i>Your target to clear it</span>
       <span><i style="background:var(--loan)"></i>Loan payment</span>
       <span><i style="background:var(--save)"></i>Round-up moved</span>
-      <span><i style="background:var(--muted)"></i>Note</span>
+      <span><i class="pip-note">✏️</i>Note</span>
     </div>
     <div style="font-size:11px;color:var(--faint);margin-top:12px">Click a week number for the full week. Click any day to see it and jot a note.</div>`;
 
@@ -236,8 +243,13 @@ function renderWeek() {
     input.onchange = async () => {
       const [billId, dueDate] = (input.closest('.row').dataset.occ || '').split('|');
       if (!billId) return;
+      /* A blank or unparseable value must never persist as $0 — that is
+         indistinguishable from a real zero and, once written, permanently
+         overrides the bill's actual amount (see 0008_bill_instance_amount_nullable.sql). */
+      const amount = parseFloat(input.value);
+      if (!isFinite(amount) || amount < 0) { toast('Enter the amount'); return; }
       try {
-        await touchOccurrence(billId, dueDate, { amount: parseFloat(input.value) || 0 });
+        await touchOccurrence(billId, dueDate, { amount });
         await reload();
       } catch (err) { toast("Couldn't save that: " + err.message); }
     };

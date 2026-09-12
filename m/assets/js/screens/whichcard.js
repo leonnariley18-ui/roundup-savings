@@ -3,7 +3,7 @@
 
 import { today, add, key, fmtD, money, daysBetween } from '../../../../assets/js/dates.js';
 import { rankCards } from '../../../../assets/js/ranking.js';
-import { logDecision } from '../../../../assets/js/data.js';
+import { logDecision, createPayback, linkDecisionToPayback } from '../../../../assets/js/data.js';
 import { state } from '../state.js';
 import { toast } from '../toast.js';
 
@@ -17,6 +17,7 @@ let host = null;
 let controlsOpen = false;
 let refDate = today();
 let category = 'dining';
+let frontIt = false, frontDesc = '', frontAmt = '';
 
 export async function mount(el) {
   host = el;
@@ -65,7 +66,15 @@ function recHTML(best) {
   return `<div class="rl">Use this one</div>
     <div class="rname">${esc(best.card.name)}</div>
     <div class="rwhy"><b>${best.text}</b> on ${CATS.find(c => c[0] === category)[1].toLowerCase()} — <b>${best.float} days</b> of float · closes ${fmtD(best.close)}.</div>
-    <button class="use-btn" id="wcUse">I used this card</button>`;
+    <button class="use-btn" id="wcUse">I used this card</button>
+    <label class="capcheck" style="margin-top:12px;font-family:var(--sans);font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="frontIt" ${frontIt ? 'checked' : ''}>
+      <span>I'll need to pay this back — also log it as a payback</span>
+    </label>
+    ${frontIt ? `<div class="frow" style="margin-top:10px"><div class="lbl">What was it?</div>
+        <input id="frontDesc" type="text" autocomplete="off" value="${esc(frontDesc)}" placeholder="Concert tickets, a group dinner…"></div>
+      <div class="frow" style="margin-top:10px"><div class="lbl">How much?</div>
+        <input id="frontAmt" type="number" inputmode="decimal" min="0" step="1" value="${esc(frontAmt)}"></div>` : ''}`;
 }
 
 function rowHTML(r, best) {
@@ -90,9 +99,22 @@ function wire(best) {
     render();
   });
 
+  const front = host.querySelector('#frontIt');
+  if (front) front.onchange = () => { frontIt = front.checked; render(); };
+  const frontDescEl = host.querySelector('#frontDesc');
+  if (frontDescEl) frontDescEl.oninput = () => { frontDesc = frontDescEl.value; };
+  const frontAmtEl = host.querySelector('#frontAmt');
+  if (frontAmtEl) frontAmtEl.oninput = () => { frontAmt = frontAmtEl.value; };
+
   const use = host.querySelector('#wcUse');
   if (use) use.onclick = async () => {
     if (!best) return;
+
+    const description = frontDesc.trim();
+    const amount = parseFloat(frontAmt);
+    if (frontIt && !description) { toast('Give the payback a name first'); return; }
+    if (frontIt && !(isFinite(amount) && amount > 0)) { toast('Enter an amount to log it as a payback'); return; }
+
     use.disabled = true;
     try {
       const row = await logDecision({
@@ -100,7 +122,19 @@ function wire(best) {
         decidedAt: new Date(refDate).toISOString(),
       });
       state.decisions.unshift(row);
-      toast('Logged — you took the pick');
+
+      if (frontIt) {
+        const pb = await createPayback({
+          description, amount, cardId: best.card.id,
+          incurredOn: key(refDate), intendedOn: key(add(refDate, 7)),
+        });
+        await linkDecisionToPayback(row.id, pb.id);
+        frontIt = false; frontDesc = ''; frontAmt = '';
+        toast('Logged — you took the pick, and logged a payback for it');
+      } else {
+        toast('Logged — you took the pick');
+      }
+      render();
     } catch (err) { toast("Couldn't log that: " + err.message); }
     use.disabled = false;
   };

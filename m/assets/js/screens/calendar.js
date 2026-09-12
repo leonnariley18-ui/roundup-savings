@@ -44,7 +44,12 @@ export function render() {
       const out = d.getMonth() !== m;
       const isT = k === todayKey;
       const events = eventsOn(index, k);
-      const pips = events.map(e => `<span style="background:${e.colour}"></span>`).join('');
+      /* A note gets a pencil instead of a colour bar — --muted sat too close
+         to --accent's bill bar to tell apart at this size — pinned in its
+         own corner rather than the flowing pip row, so it lands in the same
+         spot every day instead of drifting with the other pips. */
+      const pips = events.filter(e => e.type !== 'note').map(e => `<span style="background:${e.colour}"></span>`).join('');
+      const hasNote = events.some(e => e.type === 'note');
       const cls = ['cd'];
       if (out) cls.push('out');
       if (isT) cls.push('today-c');
@@ -52,6 +57,7 @@ export function render() {
       rows += `<div class="${cls.join(' ')}" data-day="${k}">
         <div class="cdn">${d.getDate()}</div>
         ${pips ? `<div class="mpips">${pips}</div>` : ''}
+        ${hasNote ? `<span class="mpip-note">✏️</span>` : ''}
       </div>`;
       cur = add(cur, 1);
     }
@@ -79,7 +85,7 @@ export function render() {
       <div class="mle"><span style="background:var(--alert)"></span>Payback</div>
       <div class="mle"><span style="background:var(--pbk)"></span>Your target</div>
       <div class="mle"><span style="background:var(--save)"></span>Round-up</div>
-      <div class="mle"><span style="background:var(--muted)"></span>Note</div>
+      <div class="mle"><span class="mpip-note">✏️</span>Note</div>
     </div>
     ${billsSectionHTML(y, m, isCurrentMonth)}`;
 

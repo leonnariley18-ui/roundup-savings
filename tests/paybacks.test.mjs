@@ -68,19 +68,35 @@ test('a payback cleared after its close date still never becomes a bill', () => 
 
 /* ---------------------------------------------------------- becoming a bill */
 
+/* The statement that matters for "did this become a bill" is the one that
+ * would have covered the purchase — anchored to incurred_on, not to today.
+ * calc() always returns a date at or after whatever it's handed, so a close
+ * anchored at today can never land in the past; that was the bug. Anchored
+ * at incurred_on, it genuinely can, once time has actually passed. */
 test('crossing the close date turns it into a bill', () => {
-  const before = derive(pb(), [], card({ close_day: 20 }), [], TODAY);
-  assert.equal(before.state, 'open');
-  assert.ok(before.daysToClose > 0);
+  /* Put on the 14th, card closes the 20th — the covering statement is Aug 20. */
+  const p = pb({ incurred_on: '2026-08-14' });
+  const c = card({ close_day: 20 });
 
-  /* Close day 10 means the next close is Sep 10, i.e. this month's has passed.
-     Feed observations that pin the close to a date already gone. */
-  const after = derive(pb(), [], card({ close_day: 20 }), [], pd('2026-08-25'));
-  assert.equal(after.state, 'open', 'still open — the next close is ahead');
+  const before = derive(p, [], c, [], pd('2026-08-16'));
+  assert.equal(before.state, 'open', 'the covering statement has not closed yet');
+  assert.equal(before.becameBill, false);
 
-  /* A genuinely past close: predicted date behind the reference date. */
-  const past = derive(pb(), [], card({ close_day: 20 }), [], pd('2026-08-20'));
-  assert.equal(past.daysToClose, 0, 'closes today, not yet a bill');
+  const onClose = derive(p, [], c, [], pd('2026-08-20'));
+  assert.equal(onClose.becameBill, false, 'closes today — not yet a bill');
+
+  const after = derive(p, [], c, [], pd('2026-08-25'));
+  assert.equal(after.state, 'became_bill', 'Aug 20 has come and gone unmatched');
+  assert.equal(after.becameBill, true);
+});
+
+test('a later purchase on the same card is not swept in by an earlier one becoming a bill', () => {
+  /* Put on the 22nd — the covering statement is the following month's, not
+   * the one that already closed for an earlier purchase. */
+  const p = pb({ incurred_on: '2026-08-22' });
+  const c = card({ close_day: 20 });
+  const d = derive(p, [], c, [], pd('2026-08-25'));
+  assert.equal(d.state, 'open', 'its own covering statement (Sep 20) is still ahead');
 });
 
 test('a partially paid payback past its close is still a bill for the remainder', () => {
@@ -203,6 +219,29 @@ test('dismissal is a flag on a preserved record, not a delete', () => {
   assert.equal(d.payback.dismissed, true);
   assert.equal(d.amount, 200, 'the record is intact');
   assert.equal(d.payback.description, 'Concert tickets');
+});
+
+/* ---------------------------------------------------------- mark paid */
+
+test('marking paid clears it without inventing a payment', () => {
+  const marked = derive(pb({ status: 'paid' }), [], card(), [], TODAY);
+  assert.equal(marked.state, 'cleared');
+  assert.equal(marked.manuallyPaid, true);
+  assert.equal(marked.paid, 0, 'no payment was fabricated');
+  assert.equal(marked.left, 200, 'the real figure is untouched');
+});
+
+test('a real full payment is not treated as a manual mark', () => {
+  const d = derive(pb(), [{ amount: 200 }], card(), [], TODAY);
+  assert.equal(d.cleared, true);
+  assert.equal(d.manuallyPaid, false);
+});
+
+test('marking paid only takes effect while genuinely unpaid', () => {
+  /* Real payments already clear it; the flag is redundant but harmless. */
+  const d = derive(pb({ status: 'paid' }), [{ amount: 200 }], card(), [], TODAY);
+  assert.equal(d.state, 'cleared');
+  assert.equal(d.manuallyPaid, true);
 });
 
 test('paybacks that became bills leave the outstanding total', () => {

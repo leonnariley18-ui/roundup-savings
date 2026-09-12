@@ -25,7 +25,15 @@ export function derive(payback, payments, card, closes, today) {
   const amount = Number(payback.amount);
   const paid = payments.reduce((n, p) => n + Number(p.amount), 0);
   const left = Math.max(0, amount - paid);
-  const cleared = left <= CENT;
+
+  /* Once a payback is on the real statement, there is no payment left to log
+     against it here — paying it means paying the card bill as a whole, and
+     this app has no way to verify a partial amount against one charge on
+     that bill. "Mark paid" records that you settled it that way without
+     inventing a payment figure, so it counts as cleared even though the
+     tracked amount never reached the total. */
+  const manuallyPaid = payback.status === 'paid';
+  const cleared = left <= CENT || manuallyPaid;
 
   const offCard = !card;
   const timing = offCard ? null : calc(card, closes || [], today);
@@ -35,15 +43,23 @@ export function derive(payback, payments, card, closes, today) {
   const target = pd(payback.intended_payback_on);
   const daysToTarget = daysBetween(today, target);
 
+  /* The statement this purchase actually rides on — anchored to when it was
+     incurred, not to today. calc() always returns a date at or after
+     whatever date it's handed, so anchoring at today can never produce a
+     close in the past, and daysToClose < 0 could never be true — the bug
+     this replaces. Anchoring at incurred_on can genuinely land in the past,
+     once that statement has actually gone out unmatched. */
+  const coveringClose = offCard ? null : calc(card, closes || [], pd(payback.incurred_on)).close;
+
   /* A cleared payback never becomes a bill, whatever the dates say — that is
      the reward for clearing it, and it drops off the calendar immediately. */
-  const becameBill = !cleared && !offCard && daysToClose < 0;
+  const becameBill = !cleared && !offCard && coveringClose < today;
 
   return {
     payback, payments, card, amount, paid, left, cleared, offCard,
     closeDate, daysToClose, daysToTarget,
     certain: timing ? timing.certain : true,
-    becameBill,
+    becameBill, manuallyPaid,
     targetPassed: !cleared && daysToTarget < 0,
     state: cleared ? 'cleared' : becameBill ? 'became_bill' : 'open',
     /* Urgency runs to close where there is one, and to the user's own date
