@@ -103,6 +103,17 @@ test('an unconfirmed close is marked estimated', () => {
   assert.match(close.sub, /estimated/);
 });
 
+test('a confirmed card labels its future predicted closes "Statement closed" too', () => {
+  /* Once a card is confirmed, even a projection it hasn't reached yet is
+     trusted — the wording follows the card's confidence, not whether that
+     particular date has happened. */
+  const index = build({ closesByCard: { c1: ['2026-06-20', '2026-07-20', '2026-08-20'] } });
+  const closes = eventsBetween(index, FROM, TO).filter(e => e.type === 'close');
+  const future = closes.find(e => e.date === '2026-09-20');
+  assert.ok(future, 'the next projected close is still on the calendar');
+  assert.equal(future.sub, 'Statement closed');
+});
+
 test('a logged close still shows on its own date, not just future predictions', () => {
   /* A rolling-cycle card whose most recent observation falls inside the
      visible range. closesForCard only ever steps forward from that
