@@ -56,7 +56,9 @@ export function render() {
         <thead><tr><th>Card</th><th>Rate</th><th>Float</th></tr></thead>
         <tbody>${rows.map(r => rowHTML(r, best)).join('')}</tbody>
       </table>
-    </div>`;
+    </div>
+    <div class="bsect-lbl" style="border-top:2px solid var(--soft);padding-top:14px;margin-top:14px">Are you actually using this?</div>
+    ${logHTML()}`;
 
   wire(best);
 }
@@ -75,6 +77,33 @@ function recHTML(best) {
         <input id="frontDesc" type="text" autocomplete="off" value="${esc(frontDesc)}" placeholder="Concert tickets, a group dinner…"></div>
       <div class="frow" style="margin-top:10px"><div class="lbl">How much?</div>
         <input id="frontAmt" type="number" inputmode="decimal" min="0" step="1" value="${esc(frontAmt)}"></div>` : ''}`;
+}
+
+/* Same "are you actually using this" log desktop shows, so the feature has
+ * evidence behind it on mobile too — including which entries turned into a
+ * logged payback. */
+function logHTML() {
+  const decisions = state.decisions || [];
+  if (!decisions.length) {
+    return `<div class="msoon"><div class="t">Nothing logged yet</div>
+      <div class="b">Hit "I used this card" when you take the recommendation.</div></div>`;
+  }
+  return `<div class="bill-summ" style="border-bottom:0;padding-top:8px">
+    <div class="bill-amt">${decisions.length}</div>
+    <div class="bill-sub">times you took the recommendation</div>
+  </div>
+  ${decisions.slice(0, 12).map(d => {
+    const card = state.cards.find(c => c.id === d.card_id);
+    return `<div class="bill-row">
+      <div style="width:3px;height:36px;flex-shrink:0;background:${d.payback_id ? 'var(--accent)' : 'var(--soft)'}"></div>
+      <div class="binfo">
+        <div class="nm">${card ? esc(card.name) : 'A card you no longer have'}</div>
+        <div class="bsub">${fmtD(new Date(d.decided_at))} · ${(CATS.find(c => c[0] === d.category) || ['', '—'])[1].toLowerCase()}${d.payback_id ? ' · linked to a payback' : ''}</div>
+      </div>
+      ${d.amount ? `<div class="bamt">${money(d.amount)}</div>` : ''}
+    </div>`;
+  }).join('')}
+  ${decisions.length > 12 ? `<div style="padding:8px 20px;font-family:var(--sans);font-size:12px;color:var(--faint)">Showing the last 12.</div>` : ''}`;
 }
 
 function rowHTML(r, best) {

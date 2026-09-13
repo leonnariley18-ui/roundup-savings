@@ -90,7 +90,7 @@ function rowHTML(e) {
     const isLoan = e.isLoan;
     const balLine = isLoan && state.debt
       ? `<div class="bal">${money(state.debt.current_balance)} balance</div>` : '';
-    return `<div class="wk-row" data-day="${e.date}" data-occ="${e.ref.bill.id}|${e.ref.occurrence.dateKey}" data-loan="${isLoan ? '1' : ''}">
+    return `<div class="wk-row${e.paid ? ' done' : ''}" data-day="${e.date}" data-occ="${e.ref.bill.id}|${e.ref.occurrence.dateKey}" data-loan="${isLoan ? '1' : ''}">
       ${isLoan ? '<div class="wk-spacer"></div>'
         : `<button class="wk-tick${e.paid ? ' ck' : ''}" data-tick="1" aria-label="Toggle paid"></button>`}
       <div class="mbar" style="background:${e.colour}"></div>

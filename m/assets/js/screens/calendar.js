@@ -101,11 +101,9 @@ function billsSectionHTML(billYear, billMonth, isCurrent) {
   const monthStart = new Date(billYear, billMonth, 1);
   const monthEnd = new Date(billYear, billMonth + 1, 0);
 
-  const rows = (state.bills || []).filter(b => b.active !== false).map(b => {
-    const occ = occurrences(b, monthStart, monthEnd);
-    if (!occ.length) return null;
-    return { bill: b, due: occ[0] };
-  }).filter(Boolean);
+  const rows = (state.bills || []).filter(b => b.active !== false).flatMap(b =>
+    occurrences(b, monthStart, monthEnd).map(due => ({ bill: b, due }))
+  );
 
   let total = 0, dueLeft = 0;
   rows.forEach(r => {

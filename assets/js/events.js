@@ -77,11 +77,31 @@ export function buildIndex({ cards = [], closesByCard = {}, paybacks = [], payme
   });
 
   cards.forEach(card => {
-    closesForCard(card, closesByCard[card.id] || [], from, to).forEach(d => {
-      const certain = predictClose(card, closesByCard[card.id] || [], add(d, -1)).certain;
+    const observations = closesByCard[card.id] || [];
+    const predicted = closesForCard(card, observations, from, to);
+    const predictedKeys = new Set(predicted.map(d => key(d)));
+
+    /* The label follows the card's confidence, not whether a given date has
+       actually happened yet — a confirmed card's future close is "Statement
+       closed" the same as a logged one, because the pattern behind it is
+       trusted; only an unconfirmed card's projection is hedged as
+       "estimated". */
+    predicted.forEach(d => {
+      const certain = predictClose(card, observations, add(d, -1)).certain;
       push({ type: 'close', date: key(d), label: card.name,
-             sub: 'Statement closes' + (certain ? '' : ' · estimated'),
+             sub: certain ? 'Statement closed' : 'Statement closes · estimated',
              amount: null, colour: 'var(--warn)', ref: { card } });
+    });
+
+    /* A date you've actually logged is never in `predicted` — closesForCard
+       only ever steps forward from the latest observation, so the observation
+       itself has no predicted counterpart and would otherwise vanish from the
+       calendar the moment it's confirmed. Added here so it still appears. */
+    observations.forEach(dateStr => {
+      const k = dateStr.slice(0, 10);
+      if (k < key(from) || k > key(to) || predictedKeys.has(k)) return;
+      push({ type: 'close', date: k, label: card.name,
+             sub: 'Statement closed', amount: null, colour: 'var(--warn)', ref: { card } });
     });
   });
 

@@ -151,7 +151,7 @@ function paylogHTML(payments) {
 
 /* Linking is optional, made after the fact from a Current payback only, and
  * permanent once made — a one-time choice, so a linked row has no unlink. */
-function linkedDecisionHTML(paybackId) {
+function linkedDecisionHTML(paybackId, readonly) {
   const linked = state.decisions.filter(d => d.payback_id === paybackId);
   if (linked.length) {
     return `<div class="mdeclink">
@@ -162,6 +162,7 @@ function linkedDecisionHTML(paybackId) {
       }).join('')}
     </div>`;
   }
+  if (readonly) return '';
 
   const unlinked = state.decisions.filter(d => !d.payback_id);
   if (!unlinked.length) return '';
@@ -277,6 +278,7 @@ function clearedCardHTML(d) {
         <span class="pc-urgency ok">${d.manuallyPaid ? '🎉 Paid off · via statement' : '🎉 Paid off'}</span>
       </div>
       ${paylogHTML(d.payments)}
+      ${linkedDecisionHTML(p.id, true)}
     </div>
   </div>`;
 }
