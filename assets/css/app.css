@@ -735,6 +735,11 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .pausebtn{background:transparent;border:0;color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:0;margin-top:8px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-style:dotted;display:inline-block}
 .pausebtn:hover{color:var(--muted)}
 .pausebtn.disabled{cursor:default;opacity:.4;text-decoration-style:solid}
+.todaycard.startprompt{text-align:center;border-left-color:var(--accent);padding:32px 28px}
+.todaycard.startprompt .label{font-size:19px;color:var(--text);margin-bottom:10px}
+.startbody{font-family:var(--sans);font-size:13.5px;color:var(--muted);line-height:1.6;max-width:420px;margin:0 auto 18px}
+.pausebtn.start{background:var(--accent);color:#1a0f2b;font-family:var(--sans);font-size:14px;letter-spacing:0;text-transform:none;text-decoration:none;padding:12px 22px;border-radius:2px}
+.pausebtn.start:hover{color:#1a0f2b;opacity:.9}
 .endbtn{background:transparent;border:1px solid var(--line);color:var(--accent);font-family:var(--sans);font-size:12px;padding:6px 11px;cursor:pointer;margin-top:10px;margin-right:8px}
 .endbtn:hover{border-color:var(--accent)}
 .endedbadge{font-family:var(--mono);font-size:9.5px;color:var(--save);letter-spacing:.04em;margin-left:6px}

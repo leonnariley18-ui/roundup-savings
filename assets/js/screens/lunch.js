@@ -150,8 +150,27 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
   const spent = daySpent(purchases);
   const over = spent > day.daily_limit;
   const paused = settings.tracking_paused;
+  const neverStarted = paused && lunchState.activity.length === 0;
   const rollover = computeRollover(settings, lunchState.days, purchasesByDate, t);
   const deficit = rollover < 0;
+
+  if (neverStarted) {
+    document.getElementById('lunchToday').innerHTML = `
+      <div class="todaycard startprompt">
+        <div class="label">\u{1F96A} Lunch tracking isn't on yet</div>
+        <div class="startbody">Log Dunkin, Uber Eats, or anything else against a ${money(settings.daily_limit)}/day budget, with unspent days banked forward. Nothing's tracked, and nothing nags you, until you turn it on.</div>
+        <button class="pausebtn start" id="lunchStartBtn">▶ Start tracking</button>
+      </div>`;
+    document.getElementById('lunchStartBtn').onclick = async () => {
+      try {
+        await setLunchTrackingPaused(settings.user_id, false);
+        await logLunchActivity('Tracking started');
+        await reload(); render();
+        toast('Started — now tracking today');
+      } catch (err) { toast("Couldn't start that: " + err.message); }
+    };
+    return;
+  }
 
   const blockers = paused ? [] : priorUnresolved(weekDays, isWeekend ? t : t);
   const blocked = blockers.length > 0;
