@@ -129,11 +129,11 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
   const locked = !!day.ended_at;
 
   const bankHTML = paused
-    ? `<div class="lmamt">⏸ Paused</div><div class="lmsub">not tracking right now</div>`
+    ? `<div class="lmamt">⏸ Not tracking</div><div class="lmsub">tap start to begin</div>`
     : `<div class="lmamt ${deficit ? 'deficit' : ''}">${deficit ? '' : '+'}${money(rollover)}</div><div class="lmsub">${deficit ? 'in the hole' : 'banked'}</div>`;
 
   const bodyHTML = paused
-    ? `<div class="lmstatus paused">Not tracked while paused</div>${chipsHTML(purchases, true)}`
+    ? `<div class="lmstatus paused">Not tracking — nothing is logged until you start</div>${chipsHTML(purchases, true)}`
     : `<div class="lmspent"><span class="v mono">${money(spent)}</span><span class="lmtarget">${money(day.daily_limit)} target</span></div>
        <div class="lmstatus ${over ? 'over' : 'under'}">
          ${over ? '⚠ ' + money(spent - day.daily_limit) + ' over' : money(day.daily_limit - spent) + ' under'}
@@ -161,7 +161,7 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
 
   const pauseBtn = (!paused && spent > 0)
     ? `<span class="lmpausebtn disabled">⏸ Pause tracking</span>`
-    : `<button class="lmpausebtn" id="lmPauseBtn">${paused ? '▶ Resume tracking' : '⏸ Pause tracking'}</button>`;
+    : `<button class="lmpausebtn" id="lmPauseBtn">${paused ? '▶ Start tracking' : '⏸ Pause tracking'}</button>`;
 
   document.getElementById('lmToday').innerHTML = `
     <div class="pb-card lmtodaycard ${paused ? 'paused' : deficit ? 'urgent' : ''}">
@@ -181,11 +181,11 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
     const next = !paused;
     try {
       await setLunchTrackingPaused(settings.user_id, next);
-      await logLunchActivity(next ? 'Tracking paused — fell off, not counting days until resumed' : 'Tracking resumed');
+      await logLunchActivity(next ? 'Tracking paused — fell off, not counting days until started again' : 'Tracking started');
       if (next) await pauseLunchDays([day.on_date], settings.daily_limit);
       else await resumeLunchDay(day.on_date);
       await reload(); render();
-      toast(next ? 'Paused — not logging until you resume' : 'Resumed — back to tracking');
+      toast(next ? 'Paused — not logging until you start again' : 'Started — now tracking today');
     } catch (err) { toast("Couldn't update that: " + err.message); }
   };
 }

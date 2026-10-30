@@ -111,6 +111,7 @@ function render() {
     <div class="lunchhead"><h1 class="serif" style="font-size:28px">\u{1F96A} Lunch</h1>
       <button class="lqbtn-ghost" id="lunchSettingsBtn" aria-label="Lunch settings">⚙</button>
     </div>
+    <div id="lunchSettingsPanel" hidden></div>
     <div id="lunchToday"></div>
     <div id="lunchSummary"></div>
     <h2 class="sec">Rest of this week</h2>
@@ -122,8 +123,7 @@ function render() {
       <div id="lunchDays"></div>
     </div>
     <h2 class="sec">Closed weeks</h2>
-    <div id="lunchClosedWeeks"></div>
-    <div id="lunchSettingsPanel" hidden></div>`;
+    <div id="lunchClosedWeeks"></div>`;
 
   renderToday(todayDay, todayIdx, weekDays, openWeekStart, isWeekend);
   renderDays(weekDays, todayIdx, isWeekend);
@@ -159,12 +159,12 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
   const dd = fmtD(pd(day.on_date));
 
   const bankHTML = paused
-    ? `<div class="amt">⏸ Paused</div><div class="sub">not tracking right now</div>`
+    ? `<div class="amt">⏸ Not tracking</div><div class="sub">log "start tracking" to begin</div>`
     : `<div class="amt">${deficit ? '' : '+'}${money(rollover)}</div><div class="sub">${deficit ? 'in the hole' : 'banked'}</div>`;
 
   let bodyHTML;
   if (paused) {
-    bodyHTML = `<div class="todaystatus paused">Not tracked while paused</div>${chipsHTML(day, purchases, true)}`;
+    bodyHTML = `<div class="todaystatus paused">Not tracking — nothing is logged until you start</div>${chipsHTML(day, purchases, true)}`;
   } else {
     bodyHTML = `<div class="todayspent"><span class="v mono">${money(spent)}</span><span class="target">${money(day.daily_limit)} target</span></div>
       <div class="todaystatus ${over ? 'over' : 'under'}">
@@ -203,7 +203,7 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
 
   const pauseBtn = (!paused && spent > 0)
     ? `<span class="pausebtn disabled" title="Already logged something today — can only be ended, not paused">⏸ Pause tracking</span>`
-    : `<button class="pausebtn" id="lunchPauseBtn">${paused ? '▶ Resume tracking' : '⏸ Pause tracking'}</button>`;
+    : `<button class="pausebtn" id="lunchPauseBtn">${paused ? '▶ Start tracking' : '⏸ Pause tracking'}</button>`;
 
   document.getElementById('lunchToday').innerHTML = `
     <div class="todaycard ${paused ? 'paused' : deficit ? 'deficit' : ''}">
@@ -221,12 +221,12 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
     const next = !paused;
     try {
       await setLunchTrackingPaused(settings.user_id, next);
-      await logLunchActivity(next ? 'Tracking paused — fell off, not counting days until resumed' : 'Tracking resumed');
+      await logLunchActivity(next ? 'Tracking paused — fell off, not counting days until started again' : 'Tracking started');
       if (next) await pauseLunchDays([day.on_date], settings.daily_limit);
       else await resumeLunchDay(day.on_date);
       await reload();
       render();
-      toast(next ? 'Paused — not logging until you resume' : 'Resumed — back to tracking');
+      toast(next ? 'Paused — not logging until you start again' : 'Started — now tracking today');
     } catch (err) { toast("Couldn't update that: " + err.message); }
   };
 }
