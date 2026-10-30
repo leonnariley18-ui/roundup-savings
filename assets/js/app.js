@@ -22,6 +22,7 @@ import * as calendar from './screens/calendar.js';
 import * as loan from './screens/loan.js';
 import * as roundup from './screens/roundup.js';
 import * as bills from './screens/bills.js';
+import * as lunch from './screens/lunch.js';
 
 
 
@@ -79,6 +80,7 @@ async function main() {
       loan.load(),
       roundup.mount(document.getElementById('t-ru')),
       bills.mount(document.getElementById('t-bills')),
+      lunch.mount(document.getElementById('t-lunch')),
     ]);
     mounted.filter(m => m.status === 'rejected')
            .forEach(m => console.warn('screen failed to load:', m.reason));

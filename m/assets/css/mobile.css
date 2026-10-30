@@ -242,4 +242,66 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
 #mtoast.show{opacity:1;transform:translateY(0)}
 .msoon{padding:24px 20px;font-family:var(--sans);font-size:14px;color:var(--faint)}
 .msoon .t{font-family:var(--serif);font-size:20px;color:var(--text);margin-bottom:6px}
+
+/* ---------- lunch ---------- */
+.mpausependingbadge{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.lmtodaycard{border-left-color:var(--accent)}
+.lmtodaycard.paused{border-left-color:var(--faint);opacity:.8}
+.lmtodaycard.urgent{border-left-color:var(--alert)}
+.lmlabel{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.lmamt{font-family:var(--serif);font-size:30px;line-height:1;color:var(--save)}
+.lmamt.deficit{color:var(--alert)}
+.lmsub{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:2px}
+.lmspent{display:flex;align-items:baseline;gap:8px}
+.lmspent .v{font-family:var(--serif);font-size:26px;color:var(--text)}
+.lmtarget{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase}
+.lmstatus{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-top:6px}
+.lmstatus.over{color:var(--alert)}
+.lmstatus.under{color:var(--save)}
+.lmstatus.paused{color:var(--faint)}
+.lmblockbanner{background:rgba(192,80,112,.1);border:1px solid rgba(192,80,112,.3);padding:10px 12px;font-family:var(--sans);font-size:13px;line-height:1.5;color:var(--text)}
+.lmgorow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.lmgobtn{background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:7px 10px;cursor:pointer;touch-action:manipulation}
+.lmgobtn.pause{color:var(--faint);border-color:var(--faint)}
+.lmhint{font-family:var(--sans);font-size:13px;color:var(--faint);line-height:1.5}
+.lmpausebtn{background:transparent;border:1px solid var(--line);color:var(--faint);font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;cursor:pointer;touch-action:manipulation;margin-top:8px;white-space:nowrap}
+.lmpausebtn.disabled{display:inline-block;opacity:.4;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-family:var(--mono);margin-top:8px}
+.lmtodaymark{padding:14px 20px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--soft)}
+.lmday.lmlocked{opacity:.6}
+.lmchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.lmchip{display:inline-flex;align-items:center;gap:4px;background:var(--p2);border:1px solid var(--soft);font-family:var(--mono);font-size:10px;color:var(--muted);padding:4px 8px}
+.lmchip button{background:transparent;border:0;color:var(--faint);cursor:pointer;font-size:13px;line-height:1;padding:0;touch-action:manipulation}
+.lmquickrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.lmqbtn{background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:7px 10px;cursor:pointer;touch-action:manipulation}
+.lmqbtn:active{border-color:var(--accent);color:var(--accent)}
+.lminline-add{display:flex;align-items:center;gap:6px;margin-top:8px}
+.lminline-add input{background:transparent;border:0;border-bottom:1.5px solid var(--line);color:var(--text);font-family:var(--sans);font-size:15px;padding:4px 0 6px;outline:none}
+.lminline-add input[type="text"]{flex:1}
+.lminline-add input[type="number"]{width:72px;text-align:right;font-family:var(--mono)}
+.lmgo{background:var(--accent);color:#1a0f2b;border:0;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;cursor:pointer;touch-action:manipulation;flex-shrink:0}
+.lmcancel{background:transparent;border:1px solid var(--line);color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:8px 10px;cursor:pointer;touch-action:manipulation;flex-shrink:0}
+.lmendbtn{background:transparent;border:1px solid var(--line);color:var(--faint);font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:7px 10px;cursor:pointer;touch-action:manipulation;margin-top:8px;align-self:flex-start}
+.lmpresetrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.lmpreset{background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:10px;padding:7px 11px;cursor:pointer;touch-action:manipulation}
+.lmpreset.custom{color:var(--faint)}
+.lmclosedrow{border-bottom:1px solid var(--soft)}
+.lmclosedsummary{display:flex;align-items:center;gap:10px;padding:12px 20px;cursor:pointer;touch-action:manipulation}
+.lmarrow{display:inline-block;font-size:10px;color:var(--faint);transition:transform .18s}
+.lmclosedrow.open .lmarrow{transform:rotate(90deg)}
+.lmlbl{flex:1}
+.lmlbl .w{font-family:var(--serif);font-size:17px;color:var(--text)}
+.lmtot{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.lmcwbadge{margin-left:6px;font-size:12px}
+.lmcwdetail{padding:0 20px 12px}
+.lmcwday{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--soft);font-family:var(--sans);font-size:13px}
+.lmcwday.paused{opacity:.6}
+.lmcwdn{width:60px;flex-shrink:0;font-family:var(--mono);font-size:10px;color:var(--faint)}
+.lmcwamt{font-size:13px;color:var(--muted)}
+.lmcwstatus{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase}
+.lmgapmarker{padding:8px 20px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:center;border-bottom:1px dashed var(--soft)}
+.lmzerofield{padding:14px 20px;border-top:1px solid var(--soft);border-bottom:1px solid var(--soft)}
+.lmzerobtn{background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:10px 14px;cursor:pointer;touch-action:manipulation;width:100%}
+.lmzerobtn.confirm{border-color:var(--alert);color:var(--alert)}
+.lmzerofield .lmhint{margin-top:8px}
+
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
