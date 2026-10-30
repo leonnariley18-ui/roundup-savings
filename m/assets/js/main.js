@@ -14,6 +14,7 @@ import * as week from './screens/week.js';
 import * as calendar from './screens/calendar.js';
 import * as paybacks from './screens/paybacks.js';
 import * as whichcard from './screens/whichcard.js';
+import * as lunch from './screens/lunch.js';
 
 function paintSyncDot() {
   const { ok, reason } = dbStatus();
@@ -41,6 +42,7 @@ async function main() {
   registerScreen('cal', calendar);
   registerScreen('pb', paybacks);
   registerScreen('wc', whichcard);
+  registerScreen('lunch', lunch);
 
   await initShell();
 }

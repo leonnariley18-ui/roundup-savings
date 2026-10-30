@@ -374,3 +374,115 @@ export async function movePayday(onDate) {
 export async function clearPaydayOverride(id) {
   await run(getDb().from('payday_overrides').delete().eq('id', id));
 }
+
+/* ---------------------------------------------------------------- lunch */
+
+/* Settings is a single row per user, created lazily on first visit rather
+ * than at signup — nothing else in this app provisions rows ahead of
+ * needing them either. A bounded window (not full history) covers the open
+ * week plus enough closed weeks to be worth looking at; "zero out" moves
+ * rollover_base_date forward specifically so older rows never need to be
+ * summed again. */
+const LUNCH_HISTORY_DAYS = 70;
+
+export async function loadLunch() {
+  const db = getDb();
+  let [settingsRows] = await Promise.all([
+    run(db.from('lunch_settings').select('*')),
+  ]);
+  let settings = settingsRows[0];
+  if (!settings) {
+    const inserted = await run(db.from('lunch_settings').insert({}).select());
+    settings = inserted[0];
+  }
+
+  const sinceKey = new Date(Date.now() - LUNCH_HISTORY_DAYS * 864e5).toISOString().slice(0, 10);
+  const [days, purchases, activity] = await Promise.all([
+    run(db.from('lunch_days').select('*').gte('on_date', sinceKey).order('on_date')),
+    run(db.from('lunch_purchases').select('*').gte('on_date', sinceKey).order('created_at')),
+    run(db.from('lunch_activity').select('*').order('created_at', { ascending: false }).limit(30)),
+  ]);
+
+  const purchasesByDate = {};
+  purchases.forEach(p => (purchasesByDate[p.on_date] ||= []).push(p));
+
+  return { settings, days, purchasesByDate, activity };
+}
+
+export async function logLunchActivity(text) {
+  await run(getDb().from('lunch_activity').insert({ on_date: new Date().toISOString().slice(0, 10), text }));
+}
+
+/* Lazily creates the day's row if nothing has touched it yet — same rule
+ * bill_instances follows. `dailyLimit` is the caller's current limit,
+ * snapshotted onto the row so a later scheduled change never rewrites a
+ * day that already happened. */
+async function ensureLunchDay(onDate, dailyLimit, patch = {}) {
+  const rows = await run(getDb().from('lunch_days')
+    .upsert({ on_date: onDate, daily_limit: dailyLimit, ...patch }, { onConflict: 'user_id,on_date', ignoreDuplicates: false })
+    .select());
+  return rows[0];
+}
+
+export async function logLunchPurchase({ onDate, label, amount, source = 'manual', dailyLimit }) {
+  await ensureLunchDay(onDate, dailyLimit);
+  const rows = await run(getDb().from('lunch_purchases')
+    .insert({ on_date: onDate, label, amount, source }).select());
+  return rows[0];
+}
+
+export async function removeLunchPurchase(id) {
+  await run(getDb().from('lunch_purchases').delete().eq('id', id));
+}
+
+export async function endLunchDay(onDate, dailyLimit) {
+  await ensureLunchDay(onDate, dailyLimit, { ended_at: new Date().toISOString(), paused: false });
+}
+
+/* Only ever called on the day that's still "today" — the screen enforces
+ * that, same as it enforces that a day with purchases can't be paused. */
+export async function reopenLunchDay(onDate) {
+  await run(getDb().from('lunch_days').update({ ended_at: null }).eq('on_date', onDate));
+}
+
+/* Resuming is the inverse of pauseLunchDays — clears the per-day flag,
+ * distinct from reopenLunchDay above which clears ended_at instead. */
+export async function resumeLunchDay(onDate) {
+  await run(getDb().from('lunch_days').update({ paused: false }).eq('on_date', onDate));
+}
+
+/* Backfill-pause for one or more empty days at once — the bulk escape hatch
+ * for a genuine fall-off. The screen filters to empty days before calling
+ * this; nothing here re-checks that, same trust boundary the rest of the
+ * data layer uses. */
+export async function pauseLunchDays(onDates, dailyLimit) {
+  await Promise.all(onDates.map(onDate => ensureLunchDay(onDate, dailyLimit, { paused: true, ended_at: null })));
+}
+
+export async function setLunchTrackingPaused(userId, paused) {
+  await run(getDb().from('lunch_settings').update({ tracking_paused: paused }).eq('user_id', userId));
+}
+
+export async function zeroLunchRollover(userId) {
+  const today = new Date().toISOString().slice(0, 10);
+  await run(getDb().from('lunch_settings').update({ rollover_base: 0, rollover_base_date: today }).eq('user_id', userId));
+}
+
+export async function scheduleLunchLimit(userId, amount, mondayDate) {
+  await run(getDb().from('lunch_settings')
+    .update({ scheduled_limit: amount, scheduled_limit_monday: mondayDate }).eq('user_id', userId));
+}
+
+export async function cancelScheduledLunchLimit(userId) {
+  await run(getDb().from('lunch_settings')
+    .update({ scheduled_limit: null, scheduled_limit_monday: null }).eq('user_id', userId));
+}
+
+/* The one moment a week really moves into history — folding its effect into
+ * rollover_base, pointing open_week_start at the next week, and applying a
+ * scheduled limit change if this is the Monday it was waiting for. The
+ * screen computes the patch (it already has everything loaded); this just
+ * persists it in one round trip. */
+export async function advanceLunchWeek(userId, patch) {
+  await run(getDb().from('lunch_settings').update(patch).eq('user_id', userId));
+}
