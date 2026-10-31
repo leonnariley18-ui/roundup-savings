@@ -126,7 +126,7 @@ function render() {
     <div id="lunchClosedWeeks"></div>`;
 
   renderToday(todayDay, todayIdx, weekDays, openWeekStart, isWeekend);
-  renderDays(weekDays, todayIdx, isWeekend);
+  renderDays(weekDays, todayIdx, isWeekend, settings.tracking_paused);
   renderClosedWeeks(closedWeeks);
 
   document.getElementById('lunchPausePending').hidden = !settings.tracking_paused;
@@ -250,7 +250,7 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
   };
 }
 
-function renderDays(weekDays, todayIdx, isWeekend) {
+function renderDays(weekDays, todayIdx, isWeekend, trackingPaused) {
   const { settings, purchasesByDate } = lunchState;
   const html = weekDays.map((day, i) => {
     if (i === todayIdx) {
@@ -259,9 +259,11 @@ function renderDays(weekDays, todayIdx, isWeekend) {
     const purchases = purchasesByDate[day.on_date] || [];
     const spent = daySpent(purchases);
     const isFuture = pd(day.on_date) > today();
-    const locked = day.paused || !!day.ended_at || isFuture;
+    const locked = trackingPaused || day.paused || !!day.ended_at || isFuture;
     let statusHTML;
-    if (day.paused) {
+    if (trackingPaused && !day.ended_at && !purchases.length) {
+      statusHTML = `<span class="s">not tracking</span>`;
+    } else if (day.paused) {
       statusHTML = `<span class="s">⏸ paused</span>`;
     } else if (purchases.length || !isFuture) {
       const over = spent > day.daily_limit;
@@ -299,8 +301,11 @@ function quickAddHTML(onDate, locked, big) {
 }
 
 /* Only a day that's already happened (today included) needs ending —
- * nothing to finish on a day that hasn't arrived yet. */
+ * nothing to finish on a day that hasn't arrived yet. Also gated on
+ * tracking_paused directly (not just by the caller skipping it), so this
+ * can't be reintroduced by some other call site forgetting to check. */
 function endBtnHTML(day) {
+  if (lunchState.settings.tracking_paused) return '';
   if (day.ended_at || day.paused) return '';
   if (pd(day.on_date) > today()) return '';
   return `<button class="endbtn" data-endday="${day.on_date}">End day</button>`;
