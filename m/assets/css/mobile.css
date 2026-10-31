@@ -246,6 +246,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
 /* ---------- lunch ---------- */
 .mpausependingbadge{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 .lmtodaycard{border-left-color:var(--accent)}
+.lmstartprompt{text-align:center;padding:26px 20px}
+.lmstartprompt .lmlabel{font-size:15px;color:var(--text);margin-bottom:8px}
+.lmstartbody{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+.lmstartbtn{background:var(--accent);color:#1a0f2b;border:0}
 .lmtodaycard.paused{border-left-color:var(--faint);opacity:.8}
 .lmtodaycard.urgent{border-left-color:var(--alert)}
 .lmlabel{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
