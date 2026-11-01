@@ -102,7 +102,7 @@ export function render() {
     <div id="lmClosedWeeks"></div>`;
 
   renderToday(todayDay, todayIdx, weekDays, openWeekStart, isWeekend);
-  renderDays(weekDays, todayIdx, isWeekend);
+  renderDays(weekDays, todayIdx, isWeekend, settings.tracking_paused);
   renderClosedWeeks(closedWeeks);
   renderZeroField();
 
@@ -209,16 +209,17 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
   };
 }
 
-function renderDays(weekDays, todayIdx, isWeekend) {
+function renderDays(weekDays, todayIdx, isWeekend, trackingPaused) {
   const { purchasesByDate } = lunchState;
   const html = weekDays.map((day, i) => {
     if (i === todayIdx) return `<div class="lmtodaymark">${DOWS[i]} ${fmtD(pd(day.on_date))} ${isWeekend ? '— shown above' : '— today, shown above'}</div>`;
     const purchases = purchasesByDate[day.on_date] || [];
     const spent = daySpent(purchases);
     const isFuture = pd(day.on_date) > today();
-    const locked = day.paused || !!day.ended_at || isFuture;
+    const locked = trackingPaused || day.paused || !!day.ended_at || isFuture;
     let statusText;
-    if (day.paused) statusText = '⏸ paused';
+    if (trackingPaused && !day.ended_at && !purchases.length) statusText = 'not tracking';
+    else if (day.paused) statusText = '⏸ paused';
     else if (purchases.length || !isFuture) {
       const over = spent > day.daily_limit;
       statusText = (over ? '⚠ ' + money(spent - day.daily_limit) + ' over' : money(day.daily_limit - spent) + ' under') + (day.ended_at ? ' ✓' : '');
@@ -254,6 +255,7 @@ function quickAddHTML(onDate, locked) {
 }
 
 function endBtnHTML(day) {
+  if (lunchState.settings.tracking_paused) return '';
   if (day.ended_at || day.paused || pd(day.on_date) > today()) return '';
   return `<button class="lmendbtn" data-endday="${day.on_date}">End day</button>`;
 }
