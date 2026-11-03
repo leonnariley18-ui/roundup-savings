@@ -76,7 +76,11 @@ async function maybeAdvanceWeek() {
       rollover_base_date: newBaseDate,
       open_week_start: key(nextMonday),
     };
-    if (settings.scheduled_limit != null && settings.scheduled_limit_monday === key(nextMonday)) {
+    /* <=, not === — a long gap jumps straight to the current Monday, which
+     * can land past a scheduled change's target Monday rather than exactly
+     * on it. A change whose Monday has already passed by the time this
+     * catches up should still take effect, same as it would have on time. */
+    if (settings.scheduled_limit != null && settings.scheduled_limit_monday <= key(nextMonday)) {
       patch.daily_limit = settings.scheduled_limit;
       patch.scheduled_limit = null;
       patch.scheduled_limit_monday = null;
