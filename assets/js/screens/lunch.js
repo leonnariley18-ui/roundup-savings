@@ -164,6 +164,15 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
     document.getElementById('lunchStartBtn').onclick = async () => {
       try {
         await setLunchTrackingPaused(settings.user_id, false);
+        /* Nothing before this moment is real — jump straight to the current
+         * week instead of leaving open_week_start wherever the settings row
+         * happened to be created, which would otherwise demand resolving a
+         * backlog of days that were never actually tracked. */
+        await advanceLunchWeek(settings.user_id, {
+          rollover_base: 0,
+          rollover_base_date: key(today()),
+          open_week_start: key(mon(today())),
+        });
         await logLunchActivity('Tracking started');
         await reload(); render();
         toast('Started — now tracking today');
