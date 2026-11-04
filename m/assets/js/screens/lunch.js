@@ -60,7 +60,11 @@ async function maybeAdvanceWeek() {
     const nextMonday = mon(t);
 
     const patch = { rollover_base: newRolloverBase, rollover_base_date: key(fri), open_week_start: key(nextMonday) };
-    if (settings.scheduled_limit != null && settings.scheduled_limit_monday === key(nextMonday)) {
+    /* <=, not === — a long gap jumps straight to the current Monday, which
+     * can land past a scheduled change's target Monday rather than exactly
+     * on it. A change whose Monday has already passed by the time this
+     * catches up should still take effect, same as it would have on time. */
+    if (settings.scheduled_limit != null && settings.scheduled_limit_monday <= key(nextMonday)) {
       patch.daily_limit = settings.scheduled_limit;
       patch.scheduled_limit = null;
       patch.scheduled_limit_monday = null;
@@ -135,6 +139,15 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
     document.getElementById('lmStartBtn').onclick = async () => {
       try {
         await setLunchTrackingPaused(settings.user_id, false);
+        /* Nothing before this moment is real — jump straight to the current
+         * week instead of leaving open_week_start wherever the settings row
+         * happened to be created, which would otherwise demand resolving a
+         * backlog of days that were never actually tracked. */
+        await advanceLunchWeek(settings.user_id, {
+          rollover_base: 0,
+          rollover_base_date: key(today()),
+          open_week_start: key(mon(today())),
+        });
         await logLunchActivity('Tracking started');
         await reload(); render();
         toast('Started — now tracking today');
