@@ -17,6 +17,7 @@ export const TABS = [
   ['pb',    'Paybacks',    '\u{1F501}'],
   ['bills', 'Bills',       '\u{1F9FE}'],
   ['lunch', 'Lunch',       '\u{1F96A}'],
+  ['save',  'Save',        '\u{1F4B0}'],
   ['stmt',  'Statements',  '\u{1F4C4}'],
   ['loan',  'The loan',    '\u{1F3E6}'],
 ];
