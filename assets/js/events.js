@@ -111,8 +111,11 @@ export function buildIndex({ cards = [], closesByCard = {}, paybacks = [], payme
                      p.card_id ? (closesByCard[p.card_id] || []) : [], todayDate);
 
     /* A cleared payback leaves the calendar immediately — both its deadline
-       and its target. That is the reward for clearing it. */
-    if (d.cleared) return;
+       and its target. That is the reward for clearing it. A dismissed one
+       (only possible once it's already become a bill) leaves the same way —
+       dismissing it in the Paybacks tab should mean done with it everywhere,
+       not just off that one list. */
+    if (d.cleared || p.dismissed) return;
 
     if (!d.offCard && d.closeDate && d.closeDate >= from && d.closeDate <= to) {
       push({ type: 'pbk', date: key(d.closeDate), label: p.description,
