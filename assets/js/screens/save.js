@@ -348,7 +348,7 @@ function renderSettings() {
       ${settings.scheduled_target != null ? `
         <div class="scheduledbox">Scheduled: <b>${money(settings.scheduled_target)}</b> starting Mon ${fmtD(pd(settings.scheduled_target_monday))}
           <br><button id="cancelScheduled">Cancel this change</button></div>` : `
-        <div class="amtin"><span>$</span><input id="newTargetInput" type="number" min="1" step="1" placeholder="New amount"></div>
+        <div class="amtin"><span>$</span><input id="newTargetInput" type="number" min="1" step="1" placeholder="0"></div>
         <select class="mselect" id="targetMondaySelect">${mondays.map(d => `<option value="${key(d)}">Mon ${fmtD(d)}</option>`).join('')}</select>
         <button class="zerobtn" id="scheduleTargetBtn">Schedule change</button>`}
       <div class="hint">Changes only ever take effect on a Monday — schedule one instead of editing it mid-week. A week already on the open list keeps whatever target was active when it opened.</div>

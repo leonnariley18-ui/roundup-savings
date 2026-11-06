@@ -481,7 +481,7 @@ function renderSettings() {
       ${settings.scheduled_limit != null ? `
         <div class="scheduledbox">Scheduled: <b>${money(settings.scheduled_limit)}</b> starting Mon ${fmtD(pd(settings.scheduled_limit_monday))}
           <br><button id="cancelScheduled">Cancel this change</button></div>` : `
-        <div class="amtin"><span>$</span><input id="newLimitInput" type="number" min="1" step="1" placeholder="New amount"></div>
+        <div class="amtin"><span>$</span><input id="newLimitInput" type="number" min="1" step="1" placeholder="0"></div>
         <select class="mselect" id="limitMondaySelect">${mondays.map(d => `<option value="${key(d)}">Mon ${fmtD(d)}</option>`).join('')}</select>
         <button class="zerobtn" id="scheduleLimitBtn">Schedule change</button>`}
       <div class="hint">Changes only ever take effect on a Monday — schedule one instead of editing it mid-week.</div>
