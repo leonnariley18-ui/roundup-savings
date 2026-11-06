@@ -486,3 +486,77 @@ export async function cancelScheduledLunchLimit(userId) {
 export async function advanceLunchWeek(userId, patch) {
   await run(getDb().from('lunch_settings').update(patch).eq('user_id', userId));
 }
+
+/* ---------------------------------------------------------------- save */
+
+export async function loadSave() {
+  const db = getDb();
+  let [settingsRows] = await Promise.all([
+    run(db.from('save_settings').select('*')),
+  ]);
+  let settings = settingsRows[0];
+  if (!settings) {
+    const inserted = await run(db.from('save_settings').insert({}).select());
+    settings = inserted[0];
+  }
+
+  const [history, sweeps, activity] = await Promise.all([
+    run(db.from('save_target_history').select('*').order('effective_monday')),
+    run(db.from('save_sweeps').select('*').order('swept_on', { ascending: false }).limit(30)),
+    run(db.from('save_activity').select('*').order('created_at', { ascending: false }).limit(30)),
+  ]);
+
+  return { settings, history, sweeps, activity };
+}
+
+export async function logSaveActivity(text) {
+  await run(getDb().from('save_activity').insert({ on_date: new Date().toISOString().slice(0, 10), text }));
+}
+
+/* First-ever start: nothing before this moment is real, so there's no
+ * backlog to resolve — the chosen Monday becomes the first open week
+ * outright, same shortcut Lunch's own first start now takes. */
+export async function startSaveTracking(userId, target, mondayKey) {
+  await run(getDb().from('save_settings')
+    .update({ weekly_target: target, open_week_start: mondayKey }).eq('user_id', userId));
+  await run(getDb().from('save_target_history').insert({ effective_monday: mondayKey, target }));
+}
+
+export async function scheduleSaveTarget(userId, amount, mondayDate) {
+  await run(getDb().from('save_settings')
+    .update({ scheduled_target: amount, scheduled_target_monday: mondayDate }).eq('user_id', userId));
+}
+
+export async function cancelScheduledSaveTarget(userId) {
+  await run(getDb().from('save_settings')
+    .update({ scheduled_target: null, scheduled_target_monday: null }).eq('user_id', userId));
+}
+
+/* Only ever called once the scheduled Monday has actually arrived — the
+ * screen checks that, same as Lunch's own scheduled-limit application. */
+export async function applyDueScheduledTarget(userId, target, effectiveMonday) {
+  await run(getDb().from('save_target_history').insert({ effective_monday: effectiveMonday, target }));
+  await run(getDb().from('save_settings')
+    .update({ weekly_target: target, scheduled_target: null, scheduled_target_monday: null }).eq('user_id', userId));
+}
+
+/* The one sweep action: logs the row and moves the open-week pointer past
+ * everything it just wrapped, in the same round of writes. */
+export async function logSaveSweep(userId, { sweptOn, weeksFrom, weeksTo, weeksCount, targetTotal, totalAmount, treatAmount, note }) {
+  await run(getDb().from('save_sweeps').insert({
+    swept_on: sweptOn, weeks_from: weeksFrom, weeks_to: weeksTo, weeks_count: weeksCount,
+    target_total: targetTotal, total_amount: totalAmount, treat_amount: treatAmount, note: note || null,
+  }));
+  const nextStart = new Date(new Date(weeksTo + 'T00:00:00').getTime() + 7 * 864e5).toISOString().slice(0, 10);
+  await run(getDb().from('save_settings').update({ open_week_start: nextStart }).eq('user_id', userId));
+}
+
+/* Subtracts exactly what was swept from Lunch's banked total — the partial
+ * counterpart to Lunch's own "Zero out rollover", which always drops it to
+ * $0. `currentRollover` is whatever the caller already computed from
+ * Lunch's live data, so this is one write, not a recomputation. */
+export async function reduceLunchRollover(userId, amount, currentRollover) {
+  const today = new Date().toISOString().slice(0, 10);
+  await run(getDb().from('lunch_settings')
+    .update({ rollover_base: currentRollover - amount, rollover_base_date: today }).eq('user_id', userId));
+}

@@ -38,13 +38,24 @@
   <div class="conn" id="conn" hidden></div>
 
   <!-- Six sections. The loan is not among them: it is a modal, opened from the
-       drawer and from the loan row in the week view. -->
+       drawer and from the loan row in the week view. Round-up is locked —
+       still mounted underneath, just covered until Lunch Money budgeting
+       restarts. -->
   <section class="tab" id="t-cal"></section>
-  <section class="tab" id="t-ru" hidden></section>
+  <section class="tab lockwrap" id="t-ru" hidden>
+    <div id="t-ru-inner"></div>
+    <div class="lockoverlay">
+      <div>
+        <div class="ll">Round-up is resting</div>
+        <div class="ls">It still works underneath — this is just paused until Lunch Money budgeting starts back up. Save now covers the same ground day to day.</div>
+      </div>
+    </div>
+  </section>
   <section class="tab" id="t-cards" hidden></section>
   <section class="tab" id="t-pb" hidden></section>
   <section class="tab" id="t-bills" hidden></section>
   <section class="tab" id="t-lunch" hidden></section>
+  <section class="tab" id="t-save" hidden></section>
   <section class="tab" id="t-stmt" hidden></section>
 
 </div>

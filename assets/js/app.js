@@ -23,6 +23,7 @@ import * as loan from './screens/loan.js';
 import * as roundup from './screens/roundup.js';
 import * as bills from './screens/bills.js';
 import * as lunch from './screens/lunch.js';
+import * as save from './screens/save.js';
 
 
 
@@ -78,9 +79,10 @@ async function main() {
       paybacks.mount(document.getElementById('t-pb')),
       calendar.mount(document.getElementById('t-cal')),
       loan.load(),
-      roundup.mount(document.getElementById('t-ru')),
+      roundup.mount(document.getElementById('t-ru-inner')),
       bills.mount(document.getElementById('t-bills')),
       lunch.mount(document.getElementById('t-lunch')),
+      save.mount(document.getElementById('t-save')),
     ]);
     mounted.filter(m => m.status === 'rejected')
            .forEach(m => console.warn('screen failed to load:', m.reason));
