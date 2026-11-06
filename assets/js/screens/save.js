@@ -71,20 +71,31 @@ function render() {
     <div class="savehead"><h1 class="serif" style="font-size:28px">\u{1F4B0} Save</h1>
       <button class="sqbtn-ghost" id="saveSettingsBtn" aria-label="Save settings">⚙</button>
     </div>
-    <div id="saveSettingsPanel" hidden></div>
+    <div class="sidepanel" id="saveSettingsPanel">
+      <div class="sc" id="saveSettingsScrim"></div>
+      <div class="pan">
+        <div class="ph"><span class="t serif">Settings</span><button id="saveSettingsClose" aria-label="Close">&times;</button></div>
+        <div id="saveSettingsBody"></div>
+      </div>
+    </div>
     <div id="saveBody"></div>`;
 
   document.getElementById('saveSettingsBtn').onclick = () => {
-    const panel = document.getElementById('saveSettingsPanel');
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) renderSettings();
+    renderSettings();
+    document.getElementById('saveSettingsPanel').classList.add('open');
   };
+  document.getElementById('saveSettingsScrim').onclick = closeSaveSettings;
+  document.getElementById('saveSettingsClose').onclick = closeSaveSettings;
 
   if (neverStarted(settings)) {
     renderStartPrompt();
   } else {
     renderBody();
   }
+}
+
+function closeSaveSettings() {
+  document.getElementById('saveSettingsPanel')?.classList.remove('open');
 }
 
 function renderStartPrompt() {
@@ -334,14 +345,13 @@ function renderHistory(sweeps) {
 
 function renderSettings() {
   const { settings, activity } = saveState;
-  const panel = document.getElementById('saveSettingsPanel');
+  const body = document.getElementById('saveSettingsBody');
 
   const mondays = [];
   let cursor = add(mon(today()), 7);
   for (let i = 0; i < 8; i++) { mondays.push(new Date(cursor)); cursor = add(cursor, 7); }
 
-  panel.innerHTML = `
-    <h2 class="sec">Settings</h2>
+  body.innerHTML = `
     <div class="field">
       <span class="label">Weekly target</span>
       <div class="currentlimit mono">${settings.weekly_target != null ? money(settings.weekly_target) + ' / week' : 'not set'}</div>
@@ -367,7 +377,7 @@ function renderSettings() {
       await scheduleSaveTarget(settings.user_id, v, monday);
       await logSaveActivity(`Scheduled ${money(v)}/week starting ${fmtD(pd(monday))}`);
       await reload(); render();
-      document.getElementById('saveSettingsPanel').hidden = false;
+      document.getElementById('saveSettingsPanel').classList.add('open');
       renderSettings();
       toast(`Scheduled — ${money(v)} takes effect Mon ${fmtD(pd(monday))}`);
     } catch (err) { toast("Couldn't schedule that: " + err.message); }
@@ -379,7 +389,7 @@ function renderSettings() {
       await cancelScheduledSaveTarget(settings.user_id);
       await logSaveActivity('Cancelled scheduled target change');
       await reload(); render();
-      document.getElementById('saveSettingsPanel').hidden = false;
+      document.getElementById('saveSettingsPanel').classList.add('open');
       renderSettings();
       toast('Scheduled change cancelled');
     } catch (err) { toast("Couldn't cancel that: " + err.message); }

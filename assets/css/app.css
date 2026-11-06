@@ -849,6 +849,21 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .readyamt .src{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:4px}
 
 .sec .n{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em;margin-left:8px;text-transform:none}
+
+/* ---- settings side panel — slides in from the right, shared by Lunch/Save ---- */
+.sidepanel{position:fixed;inset:0;z-index:85;pointer-events:none}
+.sidepanel .sc{position:absolute;inset:0;background:rgba(10,7,18,.74);opacity:0;transition:opacity .22s}
+.sidepanel .pan{position:absolute;right:0;top:0;bottom:0;width:min(380px,90vw);background:var(--panel);
+  border-left:1px solid var(--line);padding:22px;overflow:auto;transform:translateX(100%);
+  transition:transform .25s cubic-bezier(.32,.72,0,1)}
+.sidepanel.open{pointer-events:auto}
+.sidepanel.open .sc{opacity:1}
+.sidepanel.open .pan{transform:translateX(0)}
+.sidepanel .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.sidepanel .ph .t{font-size:24px}
+.sidepanel .ph button{background:transparent;border:1px solid var(--line);color:var(--muted);width:28px;height:28px;
+  cursor:pointer;font-size:15px;font-family:var(--mono);line-height:1}
+.sidepanel .ph button:hover{border-color:var(--alert);color:var(--alert)}
 .openweeks{background:var(--panel);border:1px solid var(--line)}
 .wkrow{display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--soft)}
 .wkrow:last-child{border-bottom:0}
