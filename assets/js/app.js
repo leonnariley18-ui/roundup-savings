@@ -8,6 +8,8 @@
 import { initDb, dbStatus } from './db.js';
 import { currentSession, showGate, signOut } from './auth.js';
 import { initShell, setLoanRenderer } from './shell.js';
+import { exportAllData } from './data.js';
+import { toast } from './ui/toast.js';
 
 /* Loaded for their global click handlers, which is what makes every field
    rendered anywhere in the app live without per-screen wiring. */
@@ -102,6 +104,31 @@ async function main() {
     out.hidden = !session;
     out.onclick = signOut;
   }
+
+  const exportBtn = document.getElementById('exportData');
+  if (exportBtn) exportBtn.onclick = async () => {
+    if (!session) { toast("Not signed in — nothing to export"); return; }
+    exportBtn.disabled = true;
+    exportBtn.textContent = 'Exporting…';
+    try {
+      const data = await exportAllData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ledger-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast('Exported');
+    } catch (err) {
+      toast("Couldn't export: " + err.message);
+    } finally {
+      exportBtn.disabled = false;
+      exportBtn.textContent = 'Export all data';
+    }
+  };
 
   initShell();   // paints the nav and opens on Calendar
 }

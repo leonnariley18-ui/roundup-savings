@@ -560,3 +560,27 @@ export async function reduceLunchRollover(userId, amount, currentRollover) {
   await run(getDb().from('lunch_settings')
     .update({ rollover_base: currentRollover - amount, rollover_base_date: today }).eq('user_id', userId));
 }
+
+/* ---------------------------------------------------------------- export */
+
+/* Every table in the `ledger` schema, unfiltered — RLS already scopes each
+ * one to auth.uid(), so there is nothing else to restrict here. One round
+ * trip per table, same as every other loader in this file. Kept as a flat
+ * list rather than discovered from the schema, so a new table only shows
+ * up here the moment someone deliberately adds it. */
+const EXPORT_TABLES = [
+  'cards', 'card_rewards', 'card_choice_categories', 'card_decisions',
+  'statement_closes', 'paybacks', 'payback_payments',
+  'bills', 'bill_instances', 'notes', 'roundup_runs',
+  'debts', 'debt_payments', 'events', 'payday_overrides',
+  'lunch_settings', 'lunch_days', 'lunch_purchases', 'lunch_activity',
+  'save_settings', 'save_target_history', 'save_sweeps', 'save_activity',
+];
+
+export async function exportAllData() {
+  const db = getDb();
+  const results = await Promise.all(EXPORT_TABLES.map(t => run(db.from(t).select('*'))));
+  const tables = {};
+  EXPORT_TABLES.forEach((t, i) => { tables[t] = results[i]; });
+  return { exported_at: new Date().toISOString(), tables };
+}
