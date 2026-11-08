@@ -11,6 +11,27 @@ What's shipped, PR by PR, is in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ---
 
+## Version history
+
+A new tab, or a full redesign of one, is a major version; everything else —
+fixes, smaller additions, settings rework — is a minor version within it.
+Newest first; full detail per change is in the changelog.
+
+- **v4.1** — Nov 8, 2026 — data export, Lunch weekend week-close fix
+- **v4.0** — Nov 8, 2026 — Save tab added; Round-up locked; Settings becomes a sliding panel
+- **v3.3** — Nov 4, 2026 — Lunch first-start backlog fix
+- **v3.2** — Nov 1, 2026 — Lunch pause-gating fix
+- **v3.1** — Oct 31, 2026 — Lunch Settings visibility fix, first-run prompt
+- **v3.0** — Oct 30, 2026 — Lunch tab added
+- **v2.2** — Sep 13, 2026 — persisted linked-decision history, mobile display fixes
+- **v2.1** — Sep 12, 2026 — Paybacks redesign continued — decision linking, mobile parity
+- **v2.0** — Sep 6, 2026 — Paybacks redesigned to a per-card layout
+- **v1.2** — Aug 19, 2026 — mobile parity, month-view today button, Bills merged in
+- **v1.1** — Aug 18, 2026 — payday logic alignment
+- **v1.0** — Aug 15–16, 2026 — initial build: Calendar, Which card, Statements, Paybacks, Bills, the loan
+
+---
+
 ## What it does
 
 **Calendar** — Monday-start grid with ISO week numbers. Statement closes,
