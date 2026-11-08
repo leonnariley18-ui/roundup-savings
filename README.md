@@ -7,6 +7,7 @@ days you have to clear something before it stops being optional.
 **Live at** [leonnariley18-ui.github.io/roundup-savings](https://leonnariley18-ui.github.io/roundup-savings/)
 
 Setup — database, auth, deployment, Lunch Money — is in **[SETUP.md](SETUP.md)**.
+What's shipped, PR by PR, is in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ---
 
