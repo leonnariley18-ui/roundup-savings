@@ -155,6 +155,19 @@ test('clearing a payback drops it off the calendar entirely', () => {
     'neither the deadline nor the target survives being paid');
 });
 
+test('dismissing a payback that already became a bill drops it off the calendar too', () => {
+  const pb = { id: 'p1', description: 'Concert tickets', amount: 200, card_id: 'c1',
+               incurred_on: '2026-07-01', intended_payback_on: '2026-08-05', moves: 0, dismissed: false };
+
+  const stillOpen = build({ paybacks: [pb] });
+  assert.equal(eventsBetween(stillOpen, FROM, TO).filter(e => e.ref.payback).length, 2,
+    'became a bill, but not dismissed yet — still on the calendar');
+
+  const dismissed = build({ paybacks: [{ ...pb, dismissed: true }] });
+  assert.equal(eventsBetween(dismissed, FROM, TO).filter(e => e.ref.payback).length, 0,
+    'dismissing it in the Paybacks tab should mean done with it everywhere');
+});
+
 test('an off-card payback contributes a target but never a deadline', () => {
   const index = build({
     paybacks: [{ id: 'p1', description: 'Affirm', amount: 120, card_id: null,

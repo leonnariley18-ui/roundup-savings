@@ -35,9 +35,23 @@ date: clear it before close and it never becomes a bill at all.
 **Bills** — entered by hand. Cadence, start, optional end, autopay, and a
 funding reminder that appears a few days ahead and ticks off like a bill.
 
+**Lunch** — a daily spending budget with rollover. Unspent days bank forward
+with no ceiling; an overspent day shows the deficit plainly instead of
+pretending today still has $40 left. Daily-limit changes only ever take effect
+on a future Monday, never mid-week, so a change can't rewrite a week that
+already happened.
+
+**Save** — sweeps what Lunch has banked into actual savings, on its own weekly
+cadence. Every Monday opens as its own week the moment it arrives; sweeping
+wraps up every open week at once, with an optional "treat yourself" carved out
+of the total that doesn't count toward the weekly target. No week is ever
+stored — its target is looked up from a small history of target changes.
+
 **Round-up** — rounds categorized spending up to the next dollar and totals the
 difference. "I moved the money" records the date and the range swept, and
-nothing else.
+nothing else. Currently locked behind an overlay in the nav — still fully
+wired underneath, just paused until Lunch Money categorization restarts; Save
+covers the same ground day to day in the meantime.
 
 **The loan** — a modal, not a tab. Every figure computed from the terms and the
 logged payments; nothing hardcoded.
@@ -60,11 +74,13 @@ assets/js/
   ranking.js      which card to use                ← pure
   paybacks.js     payback state transitions        ← pure
   bills.js        recurrence, reminders, payday     ← pure
+  lunch.js        daily budget, rollover            ← pure
+  save.js         weekly sweep targets, deltas      ← pure
   loan.js         amortisation                      ← pure
   events.js       one event model for every date    ← pure
   data.js         every Supabase call
   db.js           the client
-  screens/        the six screens + the loan modal
+  screens/        the screens + the loan modal
 ```
 
 `events.js` matters more than its size suggests. Everything on a date comes
@@ -86,6 +102,10 @@ appear with nothing behind it.
   into fiction the first time you withdraw some. The amount lives in the bank.
 - **The reschedule count is stored and never shown.** Surfacing it would turn a
   helpful affordance into a scold.
+- **Lunch and Save never store a "day" or a "week" row until something
+  actually happens to it.** A day or week nobody's touched is synthesized on
+  the fly from whatever limit or target is currently active — the same rule
+  bill occurrences already follow.
 
 ---
 
@@ -108,7 +128,7 @@ No dependencies, no build step:
 node --test tests/*.test.mjs
 ```
 
-126 tests over the pure modules. `tests/components.html` is a bench for the
+155 tests over the pure modules. `tests/components.html` is a bench for the
 date picker and select, which are pure interaction and can't be unit tested.
 
 Worth knowing: several of these encode findings that contradict the original
@@ -125,8 +145,9 @@ The repository also holds the email tooling that predates the dashboard.
 - **`sweep.py`** — Wednesday pre-payday sweep email. Still running, still
   useful, deliberately out of scope for the dashboard.
 - **`roundup.py`** — the original round-up digest. Superseded by the Round-up
-  tab, which is a port of its maths. Its workflow can be disabled once you are
-  happy with the tab.
+  tab, which is a port of its maths — now itself locked in the dashboard while
+  Lunch/Save cover the same ground. Its workflow can be disabled once the
+  Round-up tab reopens for good.
 - **`list_accounts.py`** — one-time setup helper.
 
 These run on GitHub Actions and email via Gmail. They share a Lunch Money

@@ -115,7 +115,13 @@ function render() {
     <div class="lunchhead"><h1 class="serif" style="font-size:28px">\u{1F96A} Lunch</h1>
       <button class="lqbtn-ghost" id="lunchSettingsBtn" aria-label="Lunch settings">⚙</button>
     </div>
-    <div id="lunchSettingsPanel" hidden></div>
+    <div class="sidepanel" id="lunchSettingsPanel">
+      <div class="sc" id="lunchSettingsScrim"></div>
+      <div class="pan">
+        <div class="ph"><span class="t serif">Settings</span><button id="lunchSettingsClose" aria-label="Close">&times;</button></div>
+        <div id="lunchSettingsBody"></div>
+      </div>
+    </div>
     <div id="lunchToday"></div>
     <div id="lunchSummary"></div>
     <h2 class="sec">Rest of this week</h2>
@@ -141,10 +147,15 @@ function render() {
   }
 
   document.getElementById('lunchSettingsBtn').onclick = () => {
-    const panel = document.getElementById('lunchSettingsPanel');
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) renderSettings();
+    renderSettings();
+    document.getElementById('lunchSettingsPanel').classList.add('open');
   };
+  document.getElementById('lunchSettingsScrim').onclick = closeLunchSettings;
+  document.getElementById('lunchSettingsClose').onclick = closeLunchSettings;
+}
+
+function closeLunchSettings() {
+  document.getElementById('lunchSettingsPanel')?.classList.remove('open');
 }
 
 function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
@@ -467,21 +478,20 @@ function renderClosedWeeks(weeks) {
 
 function renderSettings() {
   const { settings, activity } = lunchState;
-  const panel = document.getElementById('lunchSettingsPanel');
+  const body = document.getElementById('lunchSettingsBody');
 
   const mondays = [];
   let cursor = add(mon(today()), 7);
   for (let i = 0; i < 8; i++) { mondays.push(new Date(cursor)); cursor = add(cursor, 7); }
 
-  panel.innerHTML = `
-    <h2 class="sec">Settings</h2>
+  body.innerHTML = `
     <div class="field">
       <span class="label">Daily limit</span>
       <div class="currentlimit mono">${money(settings.daily_limit)} / day</div>
       ${settings.scheduled_limit != null ? `
         <div class="scheduledbox">Scheduled: <b>${money(settings.scheduled_limit)}</b> starting Mon ${fmtD(pd(settings.scheduled_limit_monday))}
           <br><button id="cancelScheduled">Cancel this change</button></div>` : `
-        <div class="amtin"><span>$</span><input id="newLimitInput" type="number" min="1" step="1" placeholder="New amount"></div>
+        <div class="amtin"><span>$</span><input id="newLimitInput" type="number" min="1" step="1" placeholder="0"></div>
         <select class="mselect" id="limitMondaySelect">${mondays.map(d => `<option value="${key(d)}">Mon ${fmtD(d)}</option>`).join('')}</select>
         <button class="zerobtn" id="scheduleLimitBtn">Schedule change</button>`}
       <div class="hint">Changes only ever take effect on a Monday — schedule one instead of editing it mid-week.</div>
@@ -504,7 +514,7 @@ function renderSettings() {
       await scheduleLunchLimit(settings.user_id, v, monday);
       await logLunchActivity(`Scheduled ${money(v)}/day starting ${fmtD(pd(monday))}`);
       await reload(); render();
-      document.getElementById('lunchSettingsPanel').hidden = false;
+      document.getElementById('lunchSettingsPanel').classList.add('open');
       renderSettings();
       toast(`Scheduled — ${money(v)} takes effect Mon ${fmtD(pd(monday))}`);
     } catch (err) { toast("Couldn't schedule that: " + err.message); }
@@ -516,7 +526,7 @@ function renderSettings() {
       await cancelScheduledLunchLimit(settings.user_id);
       await logLunchActivity('Cancelled scheduled limit change');
       await reload(); render();
-      document.getElementById('lunchSettingsPanel').hidden = false;
+      document.getElementById('lunchSettingsPanel').classList.add('open');
       renderSettings();
       toast('Scheduled change cancelled');
     } catch (err) { toast("Couldn't cancel that: " + err.message); }
