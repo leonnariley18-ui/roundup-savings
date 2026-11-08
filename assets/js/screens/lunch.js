@@ -69,7 +69,15 @@ async function maybeAdvanceWeek() {
     const weekDays = weekDaysWithVirtuals(openWeekStart, weekRealDays, settings.daily_limit);
     const newRolloverBase = computeRollover(settings, weekDays, lunchState.purchasesByDate, t);
     const newBaseDate = key(fri);
-    const nextMonday = mon(t);
+    /* mon(t) alone isn't enough: on a Saturday or Sunday still inside this
+     * same week, it returns this week's own Monday — the week looks
+     * "advanced" but open_week_start is just written back unchanged, so it
+     * never actually closes until the real next Monday ticks over. The
+     * week after this one (add(fri, 3)) is the floor; mon(t) only wins when
+     * a real gap has put today further out than that. */
+    const afterThisWeek = add(fri, 3);
+    const realMonday = mon(t);
+    const nextMonday = realMonday > afterThisWeek ? realMonday : afterThisWeek;
 
     const patch = {
       rollover_base: newRolloverBase,
@@ -103,10 +111,15 @@ function render() {
   const weekDays = weekDaysWithVirtuals(openWeekStart, weekRealDays, settings.daily_limit);
 
   const fri = add(openWeekStart, 4);
-  const isWeekend = t > fri;
-  const todayKey = isWeekend ? key(fri) : key(t);
-  const todayDay = weekDays.find(d => d.on_date === todayKey);
-  const todayIdx = weekDays.findIndex(d => d.on_date === todayKey);
+  /* A week can now close the moment it's fully resolved, even mid-weekend —
+   * so "today" can land in the gap before the new open week's own Monday
+   * has actually arrived. There's no day to show then; it isn't this
+   * week's weekend anymore, it just isn't next week yet either. */
+  const beforeWeekStarts = t < openWeekStart;
+  const isWeekend = !beforeWeekStarts && t > fri;
+  const todayKey = beforeWeekStarts ? null : (isWeekend ? key(fri) : key(t));
+  const todayDay = beforeWeekStarts ? null : weekDays.find(d => d.on_date === todayKey);
+  const todayIdx = beforeWeekStarts ? -1 : weekDays.findIndex(d => d.on_date === todayKey);
 
   const closedDays = days.filter(d => !weekdaysOf(openWeekStart).map(key).includes(d.on_date));
   const closedWeeks = groupIntoWeeks(closedDays, purchasesByDate);
@@ -135,7 +148,7 @@ function render() {
     <h2 class="sec">Closed weeks</h2>
     <div id="lunchClosedWeeks"></div>`;
 
-  renderToday(todayDay, todayIdx, weekDays, openWeekStart, isWeekend);
+  renderToday(todayDay, todayIdx, weekDays, openWeekStart, isWeekend, beforeWeekStarts);
   renderDays(weekDays, todayIdx, isWeekend, settings.tracking_paused);
   renderClosedWeeks(closedWeeks);
 
@@ -158,9 +171,19 @@ function closeLunchSettings() {
   document.getElementById('lunchSettingsPanel')?.classList.remove('open');
 }
 
-function renderToday(day, idx, weekDays, openWeekStart, isWeekend) {
+function renderToday(day, idx, weekDays, openWeekStart, isWeekend, beforeWeekStarts) {
   const { settings, purchasesByDate } = lunchState;
   const t = today();
+
+  if (beforeWeekStarts) {
+    document.getElementById('lunchToday').innerHTML = `
+      <div class="todaycard">
+        <div class="label">✓ Last week's all wrapped up</div>
+        <div class="hint">Nothing to do until Mon ${fmtD(openWeekStart)}.</div>
+      </div>`;
+    return;
+  }
+
   const purchases = purchasesByDate[day.on_date] || [];
   const spent = daySpent(purchases);
   const over = spent > day.daily_limit;
