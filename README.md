@@ -7,6 +7,7 @@ days you have to clear something before it stops being optional.
 **Live at** [leonnariley18-ui.github.io/roundup-savings](https://leonnariley18-ui.github.io/roundup-savings/)
 
 Setup — database, auth, deployment, Lunch Money — is in **[SETUP.md](SETUP.md)**.
+What's shipped, PR by PR, is in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ---
 
@@ -152,3 +153,57 @@ The repository also holds the email tooling that predates the dashboard.
 
 These run on GitHub Actions and email via Gmail. They share a Lunch Money
 account with the dashboard but nothing else.
+
+---
+
+## Version history
+
+A new tab, or a full redesign of one, counts as a major version; a fix,
+a smaller addition, or reworking something that already exists is a minor
+version within it. Grouped by month, newest first — full detail on any of
+these is in [CHANGELOG.md](CHANGELOG.md).
+
+### Nov 2026
+
+- **`v4.1`** 🆕 *(current)* — A real data export (every table in `ledger`, one JSON file), and
+  a quiet but real fix to Lunch: a fully-resolved week now closes the moment
+  the weekend starts, instead of sitting open and reopenable until the
+  literal next Monday arrived.
+- **`v4.0`** — Save arrives: sweep whatever Lunch has banked into actual
+  savings, on its own weekly clock. Round-up stepped aside for it — locked
+  behind an overlay, not deleted, for whenever Lunch Money budgeting starts
+  back up. Settings for both tabs became a real sliding panel instead of an
+  inline block that just pushed the page down when you clicked the gear.
+- **`v3.3`** — Closed the one gap the "never started" flow didn't cover yet:
+  starting Lunch tracking for the first time no longer drags along a
+  backlog of weeks that were never real.
+- **`v3.2`** — Days in "Rest of this week" stopped being editable while
+  tracking was paused — a gap that let a day quietly bank toward rollover
+  even though nothing was actually being tracked.
+
+### Oct 2026
+
+- **`v3.1`** — Lunch's Settings panel was rendering off-screen with no visible
+  feedback when toggled; fixed, plus a proper welcome card for the very
+  first time the tab opens.
+- **`v3.0`** — Lunch tab added: a $40/day budget with rollover that carries
+  forward with no ceiling, Monday-only scheduled limit changes, and a
+  weekend grace period for whatever day's still open.
+
+### Sep 2026
+
+- **`v2.2`** — Linked-decision history actually persists now, plus three
+  mobile display bugs fixed.
+- **`v2.1`** — Continued the Paybacks redesign — a decision can link back to
+  the payback that prompted it, and mobile caught up to desktop.
+- **`v2.0`** — Paybacks rebuilt from one connected list into its own card per
+  payback.
+
+### Aug 2026
+
+- **`v1.2`** — Mobile payback forms caught up to desktop, the month view got
+  a "today" button, and Bills merged in.
+- **`v1.1`** — Payday logic straightened out.
+- **`v1.0`** — The original build: Calendar, Which card, Statements, Paybacks,
+  Bills, the loan, and the Supabase/auth/RLS foundation everything else
+  sits on.
