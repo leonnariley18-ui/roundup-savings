@@ -4,6 +4,22 @@ One entry per merged PR, newest first. This started late — PRs #1–8 are
 reconstructed from their titles; everything from #9 on was written as it
 shipped.
 
+## Unreleased — Mobile: unplug Pay back from the nav
+Mobile's nav dropped from five tabs to four — Paybacks is unregistered in
+`m/assets/js/main.js` and its button/panel removed from `m/index.html`,
+but the screen itself (`m/assets/js/screens/paybacks.js`) is untouched
+and still fully functional. Deliberate, not an oversight: desktop's
+Paybacks tab keeps working exactly as before. Re-wire it the same way
+the other four mobile screens are registered whenever it comes back.
+
+## PR #15 — README Version history, CHANGELOG.md added
+New `CHANGELOG.md` (this file) covering all PRs to date, linked from the
+README. Added a dedicated "Version history" section to the README too —
+major version per new tab or full tab redesign, minor version for
+everything else, grouped by month, written with the same voice as "What
+it does" rather than terse fragments, with the current version marked so
+it's obvious at a glance.
+
 ## PR #14 — Add "Export all data" to the drawer
 A button in the drawer (next to Sign out) that pulls every table in the
 `ledger` schema for the signed-in user and downloads it as one JSON file.
