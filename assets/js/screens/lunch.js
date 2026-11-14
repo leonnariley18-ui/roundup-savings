@@ -219,7 +219,13 @@ function renderToday(day, idx, weekDays, openWeekStart, isWeekend, beforeWeekSta
     return;
   }
 
-  const blockers = paused ? [] : priorUnresolved(weekDays, isWeekend ? t : t);
+  /* The effective "today" for blocking purposes is whichever day this card
+   * is actually showing — day.on_date, which is Friday's during the
+   * weekend, not the real calendar date. Blocking against the real t would
+   * make Friday a "prior unresolved" blocker of itself over the weekend,
+   * hiding its own quick-add/End controls behind a banner demanding it
+   * resolve a day that's never anything but itself. */
+  const blockers = paused ? [] : priorUnresolved(weekDays, pd(day.on_date));
   const blocked = blockers.length > 0;
   const dn = DOWS[idx];
   const dd = fmtD(pd(day.on_date));
