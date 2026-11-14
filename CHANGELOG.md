@@ -4,6 +4,23 @@ One entry per merged PR, newest first. This started late — PRs #1–8 are
 reconstructed from their titles; everything from #9 on was written as it
 shipped.
 
+## Unreleased — Lunch: Expected next week, Average per week, Settings/mobile placement
+Average spend per week is a running checkpoint on `lunch_settings`
+(`avg_spend_total`/`avg_spend_weeks`), incremented once per closed week
+inside the same check that already decides a week is done, and backfilled
+once from full history the first time those columns are null — so the
+average starts from whenever tracking actually began, not from whenever
+this shipped. Paused days/weeks never count toward it. Expected next
+week is plain arithmetic on the active daily limit. On desktop, Banked,
+Expected next week, and Average per week all moved into the Settings
+panel — Banked specifically needed a home that's visible even during the
+weekend gap where the main card has nothing to show. Closed weeks also
+got richer per-day detail rows and their own daily-limit badge on
+expand, and dropped the redundant "(closed)" from the collapsed label.
+On mobile, Zero out rollover came off the main screen entirely (now a
+desktop-only admin action) and that same spot shows Banked / Expected
+next week / Average per week instead.
+
 ## Unreleased — Mobile: unplug Pay back from the nav
 Mobile's nav dropped from five tabs to four — Paybacks is unregistered in
 `m/assets/js/main.js` and its button/panel removed from `m/index.html`,

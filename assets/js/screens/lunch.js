@@ -571,7 +571,7 @@ function renderSettings() {
     <div class="field">
       <span class="label">Banked</span>
       <div class="currentlimit mono ${deficit ? 'deficit' : ''}">${deficit ? '' : '+'}${money(rollover)}</div>
-      <div class="hint">${deficit ? 'In the hole — carries forward until it's made up.' : 'Carried forward, no ceiling.'}</div>
+      <div class="hint">${deficit ? 'In the hole — carries forward until it is made up.' : 'Carried forward, no ceiling.'}</div>
     </div>
     <div class="field">
       <span class="label">Expected next week</span>
