@@ -165,7 +165,12 @@ these is in [CHANGELOG.md](CHANGELOG.md).
 
 ### Nov 2026
 
-- **`v4.2`** 🆕 *(current)* — Mobile's nav dropped Pay back — the screen itself
+- **`v4.3`** 🆕 *(current)* — Lunch gets Expected next week and Average per
+  week (a running checkpoint, backfilled from day one), Banked moves into
+  Settings so it's visible even during the weekend gap, closed weeks get
+  richer per-day detail, and mobile swaps Zero out rollover for the same
+  Banked/Expected/Average block.
+- **`v4.2`** — Mobile's nav dropped Pay back — the screen itself
   still works, it's just unplugged from the nav for now, not deleted.
 - **`v4.1`** — A real data export (every table in `ledger`, one JSON file), and
   a quiet but real fix to Lunch: a fully-resolved week now closes the moment
