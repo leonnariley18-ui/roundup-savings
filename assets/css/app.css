@@ -806,6 +806,7 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .closedrow .lbl .d{font-family:var(--mono);font-size:10px;color:var(--faint)}
 .closedrow .tot{font-family:var(--mono);font-size:13px;color:var(--muted);flex-shrink:0}
 .cwbadge{font-size:11px;margin-left:6px;vertical-align:middle}
+.cwlimitline{font-family:var(--mono);font-size:10.5px;color:var(--faint);padding:10px 16px 0}
 .cwdetail{border-top:1px solid var(--soft)}
 .cwday{padding:10px 16px;border-bottom:1px solid var(--soft);display:flex;align-items:center;flex-wrap:wrap;gap:10px}
 .cwday:last-child{border-bottom:0}
@@ -814,9 +815,18 @@ button.go:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .cwamt{font-size:12.5px;color:var(--muted);margin-left:auto}
 .cwstatus{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-left:auto}
 .cwday .chips{margin-top:0;width:100%}
+.cwday.rich{align-items:flex-start;padding:13px 16px}
+.cwamtwrap{margin-left:auto;text-align:right}
+.cwamtbig{font-size:19px}
+.cwamtbig.over{color:var(--alert)}
+.cwamtbig.under{color:var(--save)}
+.cwstatusbig{font-family:var(--mono);font-size:10.5px;margin-top:2px}
+.cwstatusbig.over{color:var(--alert)}
+.cwstatusbig.under{color:var(--faint)}
 .gapmarker{text-align:center;padding:10px 8px;margin-bottom:6px;font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--faint);border:1px dashed var(--soft)}
 
 .currentlimit{font-size:20px;color:var(--text);margin-bottom:12px}
+.currentlimit.deficit{color:var(--alert)}
 .mselect{width:100%;background:transparent;border:0;border-bottom:1.5px solid var(--line);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 2px;margin-top:8px}
 .scheduledbox{border:1px solid var(--save);background:rgba(79,196,184,.08);padding:11px;font-size:12.5px;color:var(--text)}
 .scheduledbox button{background:transparent;border:0;color:var(--faint);font-family:var(--mono);font-size:10.5px;text-decoration:underline;cursor:pointer;margin-top:8px;padding:0}

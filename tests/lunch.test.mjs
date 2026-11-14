@@ -6,7 +6,7 @@ import { pd, key } from '../assets/js/dates.js';
 import {
   computeRollover, countsTowardRollover, unresolvedDays, priorUnresolved,
   isPausable, weekFullyResolved, weekDaysWithVirtuals, groupIntoWeeks,
-  gapWeeksBetween, weekdaysOf,
+  gapWeeksBetween, weekdaysOf, weekSpendExcludingPaused, expectedNextWeek,
 } from '../assets/js/lunch.js';
 
 const settings = (over = {}) => ({
@@ -120,4 +120,53 @@ test('a real gap between two weeks is counted; back-to-back weeks are not a gap'
   assert.equal(gapWeeksBetween('2026-10-19', '2026-10-26'), 0, 'the very next Monday is no gap at all');
   assert.equal(gapWeeksBetween('2026-10-19', '2026-11-16'), 3, 'three full weeks skipped in between');
   assert.equal(gapWeeksBetween(null, '2026-10-26'), 0, 'nothing to compare against yet');
+});
+
+/* ------------------------------------------------------------ the average */
+
+test('a fully-paused week produces no data point for the average', () => {
+  const weekStart = pd('2026-10-26');
+  const days = weekdaysOf(weekStart).map(d => day(key(d), { paused: true }));
+  const out = weekSpendExcludingPaused(days, {});
+  assert.equal(out.counts, false);
+  assert.equal(out.spend, 0);
+});
+
+test('a partially-paused week still counts, using only the real total from non-paused days', () => {
+  const weekStart = pd('2026-10-26');
+  const days = weekdaysOf(weekStart).map((d, i) => day(key(d), i === 4 ? { paused: true } : {}));
+  const purchases = {
+    '2026-10-26': [{ amount: 25 }], '2026-10-27': [{ amount: 30 }],
+    '2026-10-28': [{ amount: 10 }], '2026-10-29': [{ amount: 5 }],
+    '2026-10-30': [{ amount: 999 }], // paused Friday — must not count
+  };
+  const out = weekSpendExcludingPaused(days, purchases);
+  assert.equal(out.counts, true);
+  assert.equal(out.spend, 70, 'Friday excluded even though it has stray purchases logged');
+});
+
+test('a normal week with no pauses counts its full five-day total', () => {
+  const weekStart = pd('2026-10-26');
+  const days = weekdaysOf(weekStart).map(d => day(key(d)));
+  const purchases = { '2026-10-26': [{ amount: 40 }] };
+  const out = weekSpendExcludingPaused(days, purchases);
+  assert.equal(out.counts, true);
+  assert.equal(out.spend, 40);
+});
+
+test('expected next week uses the current limit when nothing is scheduled', () => {
+  const today = pd('2026-10-29'); // Thursday — next Monday is 2026-11-02
+  assert.equal(expectedNextWeek(settings({ daily_limit: 40 }), today), 200);
+});
+
+test('expected next week uses a scheduled limit landing exactly on next Monday', () => {
+  const today = pd('2026-10-29');
+  const s = settings({ daily_limit: 40, scheduled_limit: 50, scheduled_limit_monday: '2026-11-02' });
+  assert.equal(expectedNextWeek(s, today), 250);
+});
+
+test('expected next week ignores a scheduled limit landing further out than next Monday', () => {
+  const today = pd('2026-10-29');
+  const s = settings({ daily_limit: 40, scheduled_limit: 50, scheduled_limit_monday: '2026-11-09' });
+  assert.equal(expectedNextWeek(s, today), 200);
 });

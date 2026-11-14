@@ -478,6 +478,20 @@ export async function cancelScheduledLunchLimit(userId) {
     .update({ scheduled_limit: null, scheduled_limit_monday: null }).eq('user_id', userId));
 }
 
+/* One-time, unbounded fetch used only to backfill avg_spend_total/
+ * avg_spend_weeks the first time those columns are null — every call after
+ * that initial backfill uses the normal bounded loadLunch() window instead. */
+export async function loadAllLunchHistory() {
+  const db = getDb();
+  const [days, purchases] = await Promise.all([
+    run(db.from('lunch_days').select('*').order('on_date')),
+    run(db.from('lunch_purchases').select('*').order('created_at')),
+  ]);
+  const purchasesByDate = {};
+  purchases.forEach(p => (purchasesByDate[p.on_date] ||= []).push(p));
+  return { days, purchasesByDate };
+}
+
 /* The one moment a week really moves into history — folding its effect into
  * rollover_base, pointing open_week_start at the next week, and applying a
  * scheduled limit change if this is the Monday it was waiting for. The

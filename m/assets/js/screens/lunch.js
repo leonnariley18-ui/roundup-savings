@@ -2,20 +2,22 @@
  *
  * Same engine as desktop (assets/js/lunch.js, data.js) — only the markup is
  * mobile's own. Everything works here except editing the daily limit and
- * seeing the Activity log, which stay desktop-only; Zero out rollover lives
- * right on the main screen instead of behind a Settings panel, since there
- * isn't one here at all.
+ * seeing the Activity log, which stay desktop-only. Zero out rollover is
+ * desktop-only too, same admin-action reasoning as Settings — the spot it
+ * used to occupy here now shows Banked / Expected next week / Average per
+ * week instead, since mobile has no Settings panel to tuck them into.
  */
 
 import { today, add, mon, key, pd, fmtD, money } from '../../../../assets/js/dates.js';
 import {
   loadLunch, logLunchPurchase, removeLunchPurchase, endLunchDay, reopenLunchDay,
-  pauseLunchDays, resumeLunchDay, setLunchTrackingPaused, zeroLunchRollover,
-  advanceLunchWeek, logLunchActivity,
+  pauseLunchDays, resumeLunchDay, setLunchTrackingPaused,
+  advanceLunchWeek, logLunchActivity, loadAllLunchHistory,
 } from '../../../../assets/js/data.js';
 import {
-  DOWS, daySpent, computeRollover, priorUnresolved, isPausable, weekFullyResolved,
+  DOWS, WEEKDAYS, daySpent, computeRollover, priorUnresolved, isPausable, weekFullyResolved,
   weekDaysWithVirtuals, groupIntoWeeks, gapWeeksBetween, weekdaysOf,
+  weekSpendExcludingPaused, expectedNextWeek,
 } from '../../../../assets/js/lunch.js';
 import { toast } from '../toast.js';
 
@@ -30,6 +32,7 @@ export async function mount(el) {
   host.innerHTML = '<div class="msoon"><div class="t">Loading…</div></div>';
   try {
     lunchState = await loadLunch();
+    await maybeBackfillAverage();
     await maybeAdvanceWeek();
     render();
   } catch (err) {
@@ -39,7 +42,29 @@ export async function mount(el) {
 
 async function reload() {
   lunchState = await loadLunch();
+  await maybeBackfillAverage();
   await maybeAdvanceWeek();
+}
+
+/* Same one-time backfill as desktop — see the comment on the desktop
+ * screen for the full reasoning. Must run before maybeAdvanceWeek(). */
+async function maybeBackfillAverage() {
+  const { settings } = lunchState;
+  if (settings.avg_spend_total != null && settings.avg_spend_weeks != null) return;
+
+  const { days, purchasesByDate } = await loadAllLunchHistory();
+  const openWeekStart = pd(settings.open_week_start);
+  const closedDays = days.filter(d => pd(d.on_date) < openWeekStart);
+  const weeks = groupIntoWeeks(closedDays, purchasesByDate);
+
+  let total = 0, count = 0;
+  weeks.forEach(w => {
+    const { spend, counts } = weekSpendExcludingPaused(w.days, purchasesByDate);
+    if (counts) { total += spend; count++; }
+  });
+
+  await advanceLunchWeek(settings.user_id, { avg_spend_total: total, avg_spend_weeks: count });
+  lunchState = await loadLunch();
 }
 
 /* Same check as desktop — fresh on every load, no timer. See the comment on
@@ -68,6 +93,14 @@ async function maybeAdvanceWeek() {
     const nextMonday = realMonday > afterThisWeek ? realMonday : afterThisWeek;
 
     const patch = { rollover_base: newRolloverBase, rollover_base_date: key(fri), open_week_start: key(nextMonday) };
+    /* Same data already computed above for rollover — no extra query. A
+     * fully-paused week has no data point, so it's skipped entirely
+     * rather than averaging in a zero. */
+    const { spend: weekSpend, counts } = weekSpendExcludingPaused(weekDays, lunchState.purchasesByDate);
+    if (counts) {
+      patch.avg_spend_total = Number(settings.avg_spend_total ?? 0) + weekSpend;
+      patch.avg_spend_weeks = Number(settings.avg_spend_weeks ?? 0) + 1;
+    }
     /* <=, not === — a long gap jumps straight to the current Monday, which
      * can land past a scheduled change's target Monday rather than exactly
      * on it. A change whose Monday has already passed by the time this
@@ -112,14 +145,14 @@ export function render() {
     <div id="lmToday"></div>
     <div class="bsect-lbl">Rest of this week <span class="mpausependingbadge" id="lmPausePending" hidden></span></div>
     <div id="lmDays"></div>
-    <div class="lmzerofield" id="lmZeroField"></div>
+    <div class="lmavgfield" id="lmAvgField"></div>
     <div class="bsect-lbl">Closed weeks</div>
     <div id="lmClosedWeeks"></div>`;
 
   renderToday(todayDay, todayIdx, weekDays, openWeekStart, isWeekend, beforeWeekStarts);
   renderDays(weekDays, todayIdx, isWeekend, settings.tracking_paused);
   renderClosedWeeks(closedWeeks);
-  renderZeroField();
+  renderAvgField();
 
   const badge = document.getElementById('lmPausePending');
   badge.hidden = !settings.tracking_paused;
@@ -417,28 +450,33 @@ function renderClosedWeeks(weeks) {
   });
 }
 
-function renderZeroField() {
+/* Banked / Expected next week / Average per week — desktop tucks these
+ * into Settings; mobile has no Settings panel, so they live here instead,
+ * in the spot "Zero out rollover" used to occupy (now desktop-only). */
+function renderAvgField() {
   const { settings } = lunchState;
-  const el = document.getElementById('lmZeroField');
-  el.innerHTML = `<button class="lmzerobtn" id="lmZeroBtn">Zero out rollover</button>
-    <div class="lmhint">Resets your carried-forward balance to $0.00 — this week's own days still count normally off what you've logged.</div>`;
-  let armed = false;
-  const btn = document.getElementById('lmZeroBtn');
-  btn.onclick = async () => {
-    if (!armed) {
-      armed = true;
-      btn.textContent = 'Tap again to confirm';
-      btn.classList.add('confirm');
-      setTimeout(() => { armed = false; btn.textContent = 'Zero out rollover'; btn.classList.remove('confirm'); }, 4000);
-      return;
-    }
-    try {
-      await zeroLunchRollover(settings.user_id);
-      await logLunchActivity('Rollover zeroed');
-      await reload(); render();
-      toast('Rollover zeroed — starting fresh from today');
-    } catch (err) { toast("Couldn't zero that out: " + err.message); }
-  };
+  const el = document.getElementById('lmAvgField');
+  const rollover = computeRollover(settings, lunchState.days, lunchState.purchasesByDate, today());
+  const deficit = rollover < 0;
+  const expected = expectedNextWeek(settings, today());
+  const avgWeeks = settings.avg_spend_weeks;
+  const avg = avgWeeks ? Number(settings.avg_spend_total) / avgWeeks : null;
+
+  el.innerHTML = `
+    <div class="lmavgrow">
+      <div class="lmavgcell">
+        <div class="lmavglbl">Banked</div>
+        <div class="lmavgval mono ${deficit ? 'deficit' : ''}">${deficit ? '' : '+'}${money(rollover)}</div>
+      </div>
+      <div class="lmavgcell">
+        <div class="lmavglbl">Expected next week</div>
+        <div class="lmavgval mono">${money(expected)}</div>
+      </div>
+      <div class="lmavgcell">
+        <div class="lmavglbl">Average per week</div>
+        <div class="lmavgval mono">${avg == null ? '—' : money(avg)}</div>
+      </div>
+    </div>`;
 }
 
 const esc = s => String(s ?? '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));

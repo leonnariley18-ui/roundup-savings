@@ -303,9 +303,13 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
 .lmcwamt{font-size:13px;color:var(--muted)}
 .lmcwstatus{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase}
 .lmgapmarker{padding:8px 20px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:center;border-bottom:1px dashed var(--soft)}
-.lmzerofield{padding:14px 20px;border-top:1px solid var(--soft);border-bottom:1px solid var(--soft)}
 .lmzerobtn{background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:10px 14px;cursor:pointer;touch-action:manipulation;width:100%}
 .lmzerobtn.confirm{border-color:var(--alert);color:var(--alert)}
-.lmzerofield .lmhint{margin-top:8px}
+.lmavgfield{padding:14px 20px;border-top:1px solid var(--soft);border-bottom:1px solid var(--soft)}
+.lmavgrow{display:flex;gap:14px}
+.lmavgcell{flex:1;min-width:0}
+.lmavglbl{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.lmavgval{font-size:16px;color:var(--text);margin-top:4px}
+.lmavgval.deficit{color:var(--alert)}
 
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}

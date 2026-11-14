@@ -14,12 +14,13 @@ import { today, add, mon, key, pd, fmtD, money } from '../dates.js';
 import {
   loadLunch, logLunchPurchase, removeLunchPurchase, endLunchDay, reopenLunchDay,
   pauseLunchDays, resumeLunchDay, setLunchTrackingPaused, zeroLunchRollover, scheduleLunchLimit,
-  cancelScheduledLunchLimit, advanceLunchWeek, logLunchActivity,
+  cancelScheduledLunchLimit, advanceLunchWeek, logLunchActivity, loadAllLunchHistory,
 } from '../data.js';
 import {
   WEEKDAYS, DOWS, daySpent, computeRollover, countsTowardRollover,
   unresolvedDays, priorUnresolved, isPausable, weekFullyResolved,
   weekDaysWithVirtuals, groupIntoWeeks, gapWeeksBetween, weekdaysOf,
+  weekSpendExcludingPaused, expectedNextWeek,
 } from '../lunch.js';
 import { toast } from '../ui/toast.js';
 
@@ -36,6 +37,7 @@ export async function mount(el) {
   host.innerHTML = '<div class="soon"><div class="t">Loading…</div></div>';
   try {
     lunchState = await loadLunch();
+    await maybeBackfillAverage();
     await maybeAdvanceWeek();
     render();
   } catch (err) {
@@ -45,7 +47,33 @@ export async function mount(el) {
 
 async function reload() {
   lunchState = await loadLunch();
+  await maybeBackfillAverage();
   await maybeAdvanceWeek();
+}
+
+/* One-time backfill for avg_spend_total/avg_spend_weeks — runs only while
+ * both are still null, so "average per week" starts from whenever
+ * tracking actually began instead of from whenever this feature shipped.
+ * Must run before maybeAdvanceWeek(), which is what increments these from
+ * here on — otherwise a week that's about to close would get folded into
+ * both the backfill and the increment. */
+async function maybeBackfillAverage() {
+  const { settings } = lunchState;
+  if (settings.avg_spend_total != null && settings.avg_spend_weeks != null) return;
+
+  const { days, purchasesByDate } = await loadAllLunchHistory();
+  const openWeekStart = pd(settings.open_week_start);
+  const closedDays = days.filter(d => pd(d.on_date) < openWeekStart);
+  const weeks = groupIntoWeeks(closedDays, purchasesByDate);
+
+  let total = 0, count = 0;
+  weeks.forEach(w => {
+    const { spend, counts } = weekSpendExcludingPaused(w.days, purchasesByDate);
+    if (counts) { total += spend; count++; }
+  });
+
+  await advanceLunchWeek(settings.user_id, { avg_spend_total: total, avg_spend_weeks: count });
+  lunchState = await loadLunch();
 }
 
 /* The one check that replaces every "Next day"/"Force next week" button the
@@ -84,6 +112,14 @@ async function maybeAdvanceWeek() {
       rollover_base_date: newBaseDate,
       open_week_start: key(nextMonday),
     };
+    /* Same data already computed above for rollover — no extra query.
+     * A fully-paused week has no data point, so it's skipped entirely
+     * rather than averaging in a zero. */
+    const { spend: weekSpend, counts } = weekSpendExcludingPaused(weekDays, lunchState.purchasesByDate);
+    if (counts) {
+      patch.avg_spend_total = Number(settings.avg_spend_total ?? 0) + weekSpend;
+      patch.avg_spend_weeks = Number(settings.avg_spend_weeks ?? 0) + 1;
+    }
     /* <=, not === — a long gap jumps straight to the current Monday, which
      * can land past a scheduled change's target Monday rather than exactly
      * on it. A change whose Monday has already passed by the time this
@@ -474,19 +510,27 @@ function renderClosedWeeks(weeks) {
     }
     const gapHTML = gap > 0 ? `<div class="gapmarker">— away ${gap === 1 ? 'about a week' : 'about ' + gap + ' weeks'} — nothing logged, nothing to show —</div>` : '';
     const isOpen = expandedWeeks.has(w.weekStart);
-    const detail = !isOpen ? '' : `<div class="cwdetail">${w.days.map(d => {
-      const dspent = daySpent(lunchState.purchasesByDate[d.on_date] || []);
-      return `<div class="cwday${d.paused ? ' paused' : ''}">
-        <span class="cwdn">${fmtD(pd(d.on_date))}</span>
-        ${d.paused ? `<span class="cwstatus">⏸ paused</span>` : `<span class="cwamt mono">${money(dspent)}</span>`}
-        ${chipsHTML(d, lunchState.purchasesByDate[d.on_date] || [], true)}
-      </div>`;
-    }).join('')}</div>`;
+    const weekLimit = w.days[0] ? Number(w.days[0].daily_limit) : null;
+    const detail = !isOpen ? '' : `
+      ${weekLimit != null ? `<div class="cwlimitline">${money(weekLimit)}/day that week</div>` : ''}
+      <div class="cwdetail">${w.days.map(d => {
+        const dspent = daySpent(lunchState.purchasesByDate[d.on_date] || []);
+        const over = dspent > d.daily_limit;
+        return `<div class="cwday rich${d.paused ? ' paused' : ''}">
+          <div class="cwdn">${fmtD(pd(d.on_date))}</div>
+          ${d.paused ? `<span class="cwstatus">⏸ paused</span>` : `
+            <div class="cwamtwrap">
+              <div class="cwamtbig mono ${over ? 'over' : 'under'}">${money(dspent)}</div>
+              <div class="cwstatusbig ${over ? 'over' : 'under'}">${over ? '⚠ ' + money(dspent - d.daily_limit) + ' over' : '✓ ' + money(d.daily_limit - dspent) + ' under'}</div>
+            </div>`}
+          ${chipsHTML(d, lunchState.purchasesByDate[d.on_date] || [], true)}
+        </div>`;
+      }).join('')}</div>`;
     const badges = (w.hadPause ? `<span class="cwbadge" title="Included a paused day">⏸️</span>` : '');
     html += `${gapHTML}<div class="closedrow${isOpen ? ' open' : ''}" data-week="${w.weekStart}">
       <div class="closedsummary">
         <span class="arrow">▸</span>
-        <div class="lbl"><div class="w">Week of ${fmtD(pd(w.weekStart))}${badges}</div><div class="d">closed</div></div>
+        <div class="lbl"><div class="w">Week of ${fmtD(pd(w.weekStart))}${badges}</div></div>
         <span class="tot mono">${money(w.spent)} / ${money(w.budget)}</span>
       </div>${detail}
     </div>`;
@@ -507,7 +551,32 @@ function renderSettings() {
   let cursor = add(mon(today()), 7);
   for (let i = 0; i < 8; i++) { mondays.push(new Date(cursor)); cursor = add(cursor, 7); }
 
+  /* Lives here, not on the main screen, specifically so it's still visible
+   * during the "last week's all wrapped up" gap state, when the main card
+   * has nothing to show and Banked would otherwise only be reachable from
+   * the Save tab. */
+  const rollover = computeRollover(settings, lunchState.days, lunchState.purchasesByDate, today());
+  const deficit = rollover < 0;
+  const expected = expectedNextWeek(settings, today());
+  const avgWeeks = settings.avg_spend_weeks;
+  const avg = avgWeeks ? Number(settings.avg_spend_total) / avgWeeks : null;
+
   body.innerHTML = `
+    <div class="field">
+      <span class="label">Banked</span>
+      <div class="currentlimit mono ${deficit ? 'deficit' : ''}">${deficit ? '' : '+'}${money(rollover)}</div>
+      <div class="hint">${deficit ? 'In the hole — carries forward until it's made up.' : 'Carried forward, no ceiling.'}</div>
+    </div>
+    <div class="field">
+      <span class="label">Expected next week</span>
+      <div class="currentlimit mono">${money(expected)}</div>
+      <div class="hint">${money(expected / WEEKDAYS)}/day × 5, based on whatever limit is active Monday.</div>
+    </div>
+    <div class="field">
+      <span class="label">Average per week</span>
+      <div class="currentlimit mono">${avg == null ? '—' : money(avg)}</div>
+      <div class="hint">${avg == null ? 'No closed weeks yet.' : `Across ${avgWeeks} closed week${avgWeeks === 1 ? '' : 's'} since tracking started. Paused days and weeks don't count toward it.`}</div>
+    </div>
     <div class="field">
       <span class="label">Daily limit</span>
       <div class="currentlimit mono">${money(settings.daily_limit)} / day</div>

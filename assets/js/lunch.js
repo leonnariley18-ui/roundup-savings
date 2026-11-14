@@ -116,6 +116,29 @@ export function groupIntoWeeks(days, purchasesByDate) {
     });
 }
 
+/* Non-paused days' real spend for one closed week — the one data point the
+ * running average adds per week. A fully-paused week has nothing to count,
+ * so callers skip it entirely instead of averaging in a zero. */
+export function weekSpendExcludingPaused(weekDays, purchasesByDate) {
+  const active = weekDays.filter(d => !d.paused);
+  if (!active.length) return { spend: 0, counts: false };
+  const spend = active.reduce((s, d) => s + daySpent(purchasesByDate[d.on_date] || []), 0);
+  return { spend, counts: true };
+}
+
+/* Daily limit × 5 for whichever Monday starts next week — a scheduled
+ * change only applies if its Monday lands exactly there, the same thing
+ * being asked "will next week look different" rather than "has some
+ * change eventually caught up", so this doesn't reuse maybeAdvanceWeek's
+ * <= gap-catchup logic. */
+export function expectedNextWeek(settings, today) {
+  const nextMonday = key(mon(add(today, 7)));
+  const limit = (settings.scheduled_limit != null && settings.scheduled_limit_monday === nextMonday)
+    ? settings.scheduled_limit
+    : settings.daily_limit;
+  return Number(limit) * WEEKDAYS;
+}
+
 /* How many real weeks sit between the end of the most recent closed week and
  * the start of the next one — a gap that was never created as data because
  * the open week was stuck the whole time. 0 when there's no gap. */
