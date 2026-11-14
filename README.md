@@ -165,7 +165,9 @@ these is in [CHANGELOG.md](CHANGELOG.md).
 
 ### Nov 2026
 
-- **`v4.1`** 🆕 *(current)* — A real data export (every table in `ledger`, one JSON file), and
+- **`v4.2`** 🆕 *(current)* — Mobile's nav dropped Pay back — the screen itself
+  still works, it's just unplugged from the nav for now, not deleted.
+- **`v4.1`** — A real data export (every table in `ledger`, one JSON file), and
   a quiet but real fix to Lunch: a fully-resolved week now closes the moment
   the weekend starts, instead of sitting open and reopenable until the
   literal next Monday arrived.

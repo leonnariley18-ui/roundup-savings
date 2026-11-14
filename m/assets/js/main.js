@@ -12,9 +12,13 @@ import { reload } from './state.js';
 
 import * as week from './screens/week.js';
 import * as calendar from './screens/calendar.js';
-import * as paybacks from './screens/paybacks.js';
 import * as whichcard from './screens/whichcard.js';
 import * as lunch from './screens/lunch.js';
+
+/* Paybacks is deliberately not registered here. The mobile screen
+ * (screens/paybacks.js) still exists and still works — it's just unplugged
+ * from the nav for now. Re-wire it the same way the other four are
+ * registered below whenever it comes back. */
 
 function paintSyncDot() {
   const { ok, reason } = dbStatus();
