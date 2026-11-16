@@ -44,7 +44,6 @@ async function main() {
 
   registerScreen('week', week);
   registerScreen('cal', calendar);
-  registerScreen('pb', paybacks);
   registerScreen('wc', whichcard);
   registerScreen('lunch', lunch);
 
