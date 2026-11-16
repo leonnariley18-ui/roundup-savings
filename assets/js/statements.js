@@ -84,6 +84,19 @@ export function predictClose(card, observations, from) {
   const a = analyse(observations);
 
   if (a.kind === 'cycle' && a.gap) {
+    /* An already-logged close that lands on or after `base` is the real
+     * answer — exact, not projected. Jumping straight to "the newest
+     * logged close plus one full cycle" is right when `base` is today or
+     * later (the newest close has necessarily already passed by then),
+     * but overshoots by a whole cycle whenever `base` predates that
+     * newest observation — exactly what happens the moment a payback's
+     * covering close is asked for (anchored at its own incurred_on, not
+     * today) right after a newer close gets logged for the first time. */
+    const observed = a.obs.filter(d => d >= base).sort((x, y) => x - y)[0];
+    if (observed) {
+      return { date: observed, certain: a.confirmed,
+               why: a.confirmed ? null : 'projected from a ' + a.gap + '-day cycle' };
+    }
     let d = new Date(a.obs[0].getTime() + a.gap * 864e5);
     while (d < base) d = new Date(d.getTime() + a.gap * 864e5);
     return { date: d, certain: a.confirmed,

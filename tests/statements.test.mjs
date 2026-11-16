@@ -87,6 +87,26 @@ test('a cycle rolls forward past the reference date', () => {
   assert.equal(key(predictClose(c, obs, pd('2026-10-01')).date), '2026-10-08');
 });
 
+test('a cycle uses an already-logged close that covers a past purchase, not a projection past it', () => {
+  /* The bug this replaces: asked for whatever closed a purchase made on
+   * Jul 10, with Jul 16 already logged as a real close (28-day cycle from
+   * Jun 18), the old code jumped straight to "newest logged close plus one
+   * full cycle" (Aug 13) — skipping right over Jul 16, which already
+   * covers Jul 10 and had already happened. That overshoot is exactly
+   * what let a purchase that had genuinely already become a bill look
+   * like it hadn't, the moment a newer close got logged. */
+  const c = card({ close_day: 17 });
+  const obs = ['2026-07-16', '2026-06-18'];
+  assert.equal(key(predictClose(c, obs, pd('2026-07-10')).date), '2026-07-16');
+});
+
+test('a cycle still projects forward when no logged close covers the date asked for', () => {
+  const c = card({ close_day: 17 });
+  const obs = ['2026-07-16', '2026-06-18'];
+  // Nothing logged covers Jul 20 yet — falls back to projecting one cycle past the newest.
+  assert.equal(key(predictClose(c, obs, pd('2026-07-20')).date), '2026-08-13');
+});
+
 test('with no observations it falls back to the entered day, and says so', () => {
   const p = predictClose(card({ close_day: 17 }), [], pd('2026-08-11'));
   assert.equal(key(p.date), '2026-08-17');
