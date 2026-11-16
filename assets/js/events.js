@@ -85,18 +85,21 @@ export function buildIndex({ cards = [], closesByCard = {}, paybacks = [], payme
        actually happened yet — a confirmed card's future close is "Statement
        closed" the same as a logged one, because the pattern behind it is
        trusted; only an unconfirmed card's projection is hedged as
-       "estimated". */
+       "estimated". A date that's itself been logged is certain regardless —
+       predictClose() now prefers returning an already-logged date exactly
+       (fixed alongside this), so `predicted` can legitimately contain one. */
+    const observedKeys = new Set(observations.map(o => o.slice(0, 10)));
     predicted.forEach(d => {
-      const certain = predictClose(card, observations, add(d, -1)).certain;
-      push({ type: 'close', date: key(d), label: card.name,
+      const dk = key(d);
+      const certain = observedKeys.has(dk) || predictClose(card, observations, add(d, -1)).certain;
+      push({ type: 'close', date: dk, label: card.name,
              sub: certain ? 'Statement closed' : 'Statement closes · estimated',
              amount: null, colour: 'var(--warn)', ref: { card } });
     });
 
-    /* A date you've actually logged is never in `predicted` — closesForCard
-       only ever steps forward from the latest observation, so the observation
-       itself has no predicted counterpart and would otherwise vanish from the
-       calendar the moment it's confirmed. Added here so it still appears. */
+    /* Covers the rare case where a logged date falls outside `predicted`'s
+       walk entirely (e.g. before the lookback window) — otherwise it would
+       vanish from the calendar the moment it's confirmed. */
     observations.forEach(dateStr => {
       const k = dateStr.slice(0, 10);
       if (k < key(from) || k > key(to) || predictedKeys.has(k)) return;
