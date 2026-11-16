@@ -9,7 +9,7 @@
  * never meant to own.
  */
 
-const CACHE = 'ledger-mobile-shell-v2';
+const CACHE = 'ledger-mobile-shell-v3';
 const SHELL = [
   './',
   './index.html',
@@ -40,21 +40,23 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== location.origin) return;
-  /* Only the literal shell files are ever cached — everything else (the
-   * screens, the shared assets/js/* logic they import, anything new a
-   * deploy adds) always goes straight to the network, same as Supabase
-   * calls already do. Caching those too used to mean a module fetched
-   * once could keep being served stale forever, since this worker never
-   * had any other way to notice it had changed. */
+  /* Only the literal shell files are ever touched here — everything else
+   * (the screens, the shared assets/js/* logic they import, anything new
+   * a deploy adds) always goes straight to the network, same as Supabase
+   * calls already do. */
   if (!SHELL_PATHS.has(url.pathname)) return;
 
+  /* Network-first, not cache-first — a shell file's own *content* can
+   * change (as main.js's just did) without sw.js itself changing, and
+   * nothing short of a new cache name would ever notice that under a
+   * cache-first strategy. Falling back to the cache only on a failed
+   * fetch keeps the one thing SHELL actually exists for — working
+   * offline — without ever preferring a stale copy while online. */
   event.respondWith(
-    caches.match(event.request).then(cached =>
-      cached || fetch(event.request).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE).then(cache => cache.put(event.request, copy));
-        return res;
-      }).catch(() => cached)
-    )
+    fetch(event.request).then(res => {
+      const copy = res.clone();
+      caches.open(CACHE).then(cache => cache.put(event.request, copy));
+      return res;
+    }).catch(() => caches.match(event.request))
   );
 });
